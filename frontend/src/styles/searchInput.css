@@ -1,0 +1,199 @@
+/* searchInput.css */
+
+.search-input-container {
+  width: 100%;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Title styling */
+.search-title {
+  width: 100%;
+  padding: 24px 24px 16px;
+  text-align: center;
+  background-color: white;
+}
+
+.search-title h1 {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.search-title p {
+  margin-bottom: 0;
+}
+
+/* Tabs styling - placed below title */
+.search-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+  padding: 0 16px;
+  background-color: white;
+  width: 100%;
+}
+
+.search-tabs .ant-tabs-tab {
+  padding: 12px 24px;
+  transition: all 0.3s;
+  font-size: 16px;
+  font-weight: 500;
+  background-color: white;
+}
+
+.search-tabs .ant-tabs-tab-active {
+  background-color: #f5f5f5;
+}
+
+.search-tabs .ant-tabs-tab:hover {
+  color: #b82e28;
+}
+
+.search-tabs .ant-tabs-ink-bar {
+  background-color: #b82e28;
+  height: 3px;
+}
+
+/* Search panel */
+.search-panel {
+  padding: 24px;
+  background-color: #f5f5f5;
+}
+
+/* Default search */
+.default-search {
+  display: flex;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+/* Condition row */
+.condition-row {
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.condition-row:last-child {
+  margin-bottom: 0;
+}
+
+/* Select styling */
+.operator-select .ant-select-selector,
+.field-select .ant-select-selector {
+  border-radius: 6px !important;
+  border-color: #d9d9d9 !important;
+}
+
+.operator-select:hover .ant-select-selector,
+.field-select:hover .ant-select-selector {
+  border-color: #b82e28 !important;
+}
+
+.ant-select-focused .ant-select-selector {
+  border-color: #b82e28 !important;
+  box-shadow: 0 0 0 2px rgba(184, 46, 40, 0.1) !important;
+}
+
+/* 扩大选择框的宽度 */
+.condition .ant-select {
+  min-width: 150px;
+}
+
+/* Input styling */
+.condition-input {
+  border-radius: 6px;
+}
+
+.condition-input:hover {
+  border-color: #b82e28;
+}
+
+.condition-input:focus {
+  border-color: #b82e28;
+  box-shadow: 0 0 0 2px rgba(184, 46, 40, 0.1);
+}
+
+/* Button styling */
+.delete-btn {
+  padding: 0 8px;
+  border-radius: 50%;
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-btn:hover {
+  background-color: #fff1f0;
+}
+
+.action-buttons {
+  width: 100%;
+}
+
+.action-buttons .ant-btn {
+  height: 40px;
+  border-radius: 6px;
+  padding: 0 16px;
+}
+
+.action-buttons .ant-btn-primary {
+  background-color: #b82e28;
+  border-color: #b82e28;
+}
+
+.action-buttons .ant-btn-primary:hover {
+  background-color: #a01b16;
+  border-color: #a01b16;
+}
+
+/* Coming soon panel */
+.coming-soon {
+  padding: 48px 24px;
+  text-align: center;
+  background-color: #f5f5f5;
+}
+
+.coming-soon h3 {
+  color: #b82e28;
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.coming-soon p {
+  color: #666;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .search-panel {
+    padding: 16px;
+  }
+  
+  .condition-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .operator-select,
+  .field-select {
+    width: 100% !important;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .action-buttons .ant-space {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .action-buttons .ant-btn {
+    flex: 1;
+  }
+}

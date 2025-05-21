@@ -1,0 +1,131 @@
+/* disciplinaryAnalysis.css */
+
+.disciplinary-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.discipline-hero-section {
+  position: relative;
+  min-height: 500px;
+  padding: 40px 0;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #b82e28 50%, white 50%);
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.discipline-analysis-container {
+  width: 90%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.search-title {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.search-title h1 {
+  color: #b82e28;
+  margin-bottom: 8px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.search-title p {
+  color: #666;
+}
+
+.discipline-form {
+  padding: 30px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+}
+
+.discipline-input-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.discipline-input-item {
+  flex: 1;
+  min-width: 280px;
+}
+
+.discipline-input-item label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+.discipline-input-item .ant-input-affix-wrapper:hover,
+.discipline-input-item .ant-picker:hover {
+  border-color: #b82e28;
+}
+
+.discipline-input-item .ant-input-affix-wrapper-focused,
+.discipline-input-item .ant-picker-focused {
+  border-color: #b82e28;
+  box-shadow: 0 0 0 2px rgba(184, 46, 40, 0.1);
+}
+
+.discipline-button-group {
+  display: flex;
+  justify-content: center;
+}
+
+.discipline-button-group .ant-btn-primary:hover,
+.discipline-button-group .ant-btn-primary:focus {
+  background-color: #991f1b;
+  border-color: #991f1b;
+}
+
+.analysis-results {
+  margin-top: 30px;
+  padding: 30px;
+  background-color: #f5f5f5;
+  border-radius: 10px;
+}
+
+.result-summary {
+  text-align: center;
+}
+
+.result-summary h3 {
+  color: #b82e28;
+  margin-bottom: 15px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .discipline-hero-section {
+    min-height: 600px;
+  }
+  
+  .discipline-analysis-container {
+    width: 95%;
+    padding: 20px;
+  }
+  
+  .discipline-form {
+    padding: 20px;
+  }
+  
+  .search-title h1 {
+    font-size: 24px;
+  }
+}

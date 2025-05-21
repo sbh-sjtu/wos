@@ -1,0 +1,71 @@
+/* generalSearch.css */
+
+.general-search-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.general-search-header {
+  min-height: 64px;
+}
+
+.general-search-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hero Section with Search */
+.search-hero-section {
+  position: relative;
+  height: 500px;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #b82e28 50%, white 50%);
+}
+
+.search-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 50%;
+  background-color: #b82e28;
+  z-index: 1;
+}
+
+/* Add a subtle pattern to the background for depth */
+.search-background::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle, transparent 20%, rgba(0, 0, 0, 0.05) 20%, rgba(0, 0, 0, 0.05) 80%, transparent 80%, transparent);
+  background-size: 10px 10px;
+  z-index: 2;
+}
+
+.search-overlay {
+  position: relative;
+  z-index: 3;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .search-hero-section {
+    height: 500px;
+  }
+}

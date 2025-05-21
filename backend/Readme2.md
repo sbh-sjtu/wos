@@ -1,0 +1,22 @@
+- **`src/main/java`** : 存储后端`.java`文件
+    - **`config`** : 存储配置文件(`CORS`、`ElasticSearch`等)以及自定义数据格式（`DisciplinaryRequest`、`SearchFilter`等）
+        - **`SearchFilter`** : 自定义的搜索条件类（如筛选字段、运算符、值）
+    - **`controller`** : 存储控制器文件
+    - **`mapper`** : 存储`Mybatis`的`Mapper`文件
+    - **`model`** : 存储实体文件
+        - **`main2022`** : 数据库表对应的实体类（映射表结构）
+    - **`repository`** : 存储`JPA`的`Repository`文件(未使用)
+    - **`provider`** : 存储`Mybatis`的`Provider`文件(SQL语句组合)
+    - **`service`** : 存储服务文件
+        - **`impl`** : 存储服务实现文件
+            - **`DisciplinaryAnalysis`** : 存储学科分析服务实现文件
+            - **`DownloadService`** : 存储下载服务实现文件
+            - **`Main2022ServiceImpl`** : 存储主页服务(高级检索)实现文件
+            - **`Main2022ElasticSearchServiceImpl`** : 存储主页服务(全文搜索)实现文件
+            - **`NLPService`** : 存储自然语言处理文件
+    - **`BackEndApplication`** : 存储主类文件
+
+- **`src/main/resources`** : 存储配置文件
+    - **`application.properties`** : 数据库配置文件
+
+- **`pom.xml`** : Maven配置文件

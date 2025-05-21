@@ -1,0 +1,57 @@
+/* conditionRow.css */
+
+.condition {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    width: 100%;
+    position: relative;
+    padding: 10px 0;
+  }
+  
+  .delete-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    margin-right: 10px;
+    transition: background-color 0.3s;
+  }
+  
+  .delete-icon:hover {
+    background-color: #fff1f0;
+  }
+  
+  /* Ant Design Select & Input styling */
+  .condition .ant-select:hover .ant-select-selector,
+  .condition .ant-input:hover {
+    border-color: #b82e28;
+  }
+  
+  .condition .ant-select-focused .ant-select-selector,
+  .condition .ant-input:focus {
+    border-color: #b82e28 !important;
+    box-shadow: 0 0 0 2px rgba(184, 46, 40, 0.1) !important;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .condition {
+      flex-wrap: wrap;
+      padding-bottom: 16px;
+    }
+    
+    .delete-icon {
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+    
+    .condition .ant-select,
+    .condition .ant-input {
+      margin-bottom: 10px;
+    }
+  }

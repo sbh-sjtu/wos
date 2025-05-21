@@ -1,0 +1,153 @@
+.detailBackground {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.detailBackground .detail-paperTitle {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background-color: white;
+    width: 1200px;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+}
+
+.paperTitle {
+    padding: 20px;
+}
+
+.sectionForPaper {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    background-color: white;
+    width: 1200px;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+}
+
+.sectionForPaper .section-author {
+    width: 600px;
+}
+
+.section-author .authorInfo {
+    display: flex;
+    flex-direction: column;
+    padding-left: 40px;
+}
+
+.section-publisher .publisherInfo {
+    display: flex;
+    flex-direction: column;
+    padding-left: 40px;
+}
+
+.sectionForPaper .section-publisher {
+    width: 600px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: row;
+}
+
+.infoTitle {
+    padding-left: 40px;
+}
+
+.authorLabel {
+    min-width: 100px;
+    font-size: 15px;
+    font-weight: bold;
+    padding-right: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.publisherLabel {
+    min-width: 100px;
+    font-size: 15px;
+    font-weight: bold;
+    padding-right: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.sectionForPaper .section-discipline {
+    width: 600px;
+}
+
+.section-discipline .disciplineInfo {
+    display: flex;
+    flex-direction: column;
+    padding-left: 40px;
+}
+
+.sectionForPaper .section-impact {
+    width: 600px;
+}
+
+.section-impact .impactInfo {
+    display: flex;
+    flex-direction: column;
+    padding-left: 40px;
+}
+
+.disciplineLabel {
+    min-width: 100px;
+    font-size: 15px;
+    font-weight: bold;
+    padding-right: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.impactLabel {
+    min-width: 100px;
+    font-size: 15px;
+    font-weight: bold;
+    padding-right: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.sectionForPaper .section-link {
+    width: 1200px;
+}
+
+.section-link .linkInfo {
+    display: flex;
+    flex-direction: column;
+    padding-left: 40px;
+}
+
+.linkLabel {
+    min-width: 100px;
+    font-size: 15px;
+    font-weight: bold;
+    padding-right: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.sectionForPaper .section-abstract {
+    width: 1200px;
+}
+
+.abstractLabel {
+    min-width: 100px;
+    font-size: 15px;
+    font-weight: bold;
+    padding-right: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.abstractInfo{
+    display: flex;
+    flex-direction: column;
+    padding-left: 40px;
+}

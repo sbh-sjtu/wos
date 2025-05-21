@@ -1,0 +1,82 @@
+/* fulltextSearch.css */
+
+.fulltext-search-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.search-title {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.search-title h1 {
+  color: #b82e28;
+  margin-bottom: 8px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.search-input-container {
+  width: 100%;
+  max-width: 700px;
+}
+
+.search-input-wrapper {
+  display: flex;
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+
+.search-input-wrapper .ant-input-affix-wrapper:hover,
+.search-input-wrapper .ant-input-affix-wrapper:focus {
+  border-color: #b82e28;
+}
+
+.search-input-wrapper .ant-btn-primary:hover,
+.search-input-wrapper .ant-btn-primary:focus {
+  background-color: #991f1b;
+}
+
+.advanced-search-link {
+  text-align: right;
+  margin-top: 12px;
+}
+
+.advanced-search-link .ant-btn {
+  color: #b82e28;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.advanced-search-link .ant-btn:hover {
+  color: #991f1b;
+  text-decoration: underline;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .search-input-wrapper {
+    flex-direction: column;
+    box-shadow: none;
+  }
+  
+  .search-input-wrapper .ant-input-affix-wrapper {
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-right: 1px solid #d9d9d9;
+  }
+  
+  .search-input-wrapper .ant-btn {
+    border-radius: 8px;
+    width: 100%;
+  }
+}

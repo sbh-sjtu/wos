@@ -1,0 +1,125 @@
+/* searchResult.css */
+
+.search-result-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.result-content {
+  flex: 1;
+  padding: 20px 0;
+  background-color: #f5f5f5;
+}
+
+.result-container {
+  max-width: 1800px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 20px;
+}
+
+/* 侧边栏样式 */
+.result-sider {
+  background-color: white !important;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-right: 20px;
+  height: fit-content;
+  position: sticky;
+  top: 90px;
+}
+
+.sider-content {
+  padding: 20px;
+}
+
+.result-summary {
+  margin-bottom: 10px;
+}
+
+.action-buttons {
+  margin-top: 15px;
+}
+
+.filter-options {
+  margin-bottom: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.filter-placeholder {
+  padding: 15px 0;
+}
+
+/* 主内容区域样式 */
+.result-main-content {
+  background-color: white;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  min-height: 600px;
+}
+
+/* 文章卡片容器 */
+.paper-cards-container {
+  margin-bottom: 30px;
+}
+
+.paper-card-wrapper {
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 16px;
+}
+
+.paper-card-wrapper:last-child {
+  border-bottom: none;
+}
+
+/* 分页容器 */
+.pagination-container-bottom {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #f0f0f0;
+}
+.pagination-container-top {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* 无结果状态 */
+.no-results {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+}
+
+/* 响应式调整 */
+@media (max-width: 992px) {
+  .result-container {
+    padding: 0 10px;
+  }
+  
+  .result-sider {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    margin-right: 0;
+    margin-bottom: 20px;
+  }
+}
+
+.paper-card-wrapper .ant-card-meta-title {
+  color: #b82e28;
+  transition: color 0.3s;
+}
+
+.paper-card-wrapper:hover .ant-card-meta-title {
+  color: #991f1b;
+}

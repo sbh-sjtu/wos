@@ -11,6 +11,7 @@ import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -115,11 +116,113 @@ public class Main2022ElasticSearchServiceImpl implements Main2022ElasticSearchSe
                 .to(endDate + "-12-31");
         boolQueryBuilder.filter(rangeQuery);
 
+        // 按年份分类的聚合 - 使用通用方法避免版本兼容性问题
+        TermsAggregationBuilder aggregation = AggregationBuilders.terms("by_year")
+                .field("pubyear.keyword")
+                .size(100);
+        // 注意：排序在不同版本中可能不同，如果需要排序，请根据具体版本添加：
+        // .order(BucketOrder.key(true)); // 较新版本 (7.x+)
+        // .order(Terms.Order.term(true)); // 较旧版本 (6.x)
+
+        // 创建 ElasticSearch 查询
+        NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
+                .withQuery(boolQueryBuilder)
+                .addAggregation(aggregation)
+                .withPageable(PageRequest.of(0, 10000)) // 增加返回结果数量
+                .build();
+
+        // 执行查询
+        SearchHits<main2022> searchHits = elasticsearchRestTemplate.search(searchQuery, main2022.class);
+        List<main2022> allPapers = searchHits.stream()
+                .map(hit -> hit.getContent())
+                .collect(Collectors.toList());
+
+        // 获取聚合结果
+        ElasticsearchAggregations elasticsearchAggregations = (ElasticsearchAggregations) searchHits.getAggregations();
+
+        if (elasticsearchAggregations != null) {
+            Terms yearTerms = elasticsearchAggregations.aggregations().get("by_year");
+
+            // 使用聚合结果创建年份分组
+            Map<String, List<main2022>> result = new TreeMap<>(); // TreeMap保持年份排序
+
+            for (Terms.Bucket bucket : yearTerms.getBuckets()) {
+                String year = bucket.getKeyAsString();
+                List<main2022> yearPapers = allPapers.stream()
+                        .filter(paper -> year.equals(paper.getPubyear()))
+                        .collect(Collectors.toList());
+
+                if (!yearPapers.isEmpty()) {
+                    result.put(year, yearPapers);
+                }
+            }
+
+            return result;
+        } else {
+            // 如果没有聚合结果，手动按年份分组
+            return allPapers.stream()
+                    .collect(Collectors.groupingBy(
+                            paper -> paper.getPubyear() != null ? paper.getPubyear() : "Unknown",
+                            TreeMap::new,
+                            Collectors.toList()
+                    ));
+        }
+    }
+
+    /**
+     * 增强的搜索方法，支持更多搜索选项
+     */
+    public Map<String, List<main2022>> advancedDisciplinarySearch(String keyword,
+                                                                  String startDate,
+                                                                  String endDate,
+                                                                  List<String> countries,
+                                                                  List<String> journals,
+                                                                  String documentType) {
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+        // 关键词搜索
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            BoolQueryBuilder keywordQuery = QueryBuilders.boolQuery();
+            keywordQuery.should(QueryBuilders.matchQuery("subject_extended", keyword).boost(3.0f));
+            keywordQuery.should(QueryBuilders.matchQuery("article_title", keyword).boost(2.5f));
+            keywordQuery.should(QueryBuilders.matchQuery("abstract_text", keyword).boost(2.0f));
+            keywordQuery.should(QueryBuilders.matchQuery("keyword", keyword).boost(2.5f));
+            keywordQuery.minimumShouldMatch(1);
+            boolQueryBuilder.must(keywordQuery);
+        }
+
+        // 时间范围过滤
+        if (startDate != null && endDate != null) {
+            RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("sortdate")
+                    .from(startDate + "-01-01")
+                    .to(endDate + "-12-31");
+            boolQueryBuilder.filter(rangeQuery);
+        }
+
+        // 国家过滤
+        if (countries != null && !countries.isEmpty()) {
+            BoolQueryBuilder countryQuery = QueryBuilders.boolQuery();
+            for (String country : countries) {
+                countryQuery.should(QueryBuilders.wildcardQuery("reprint_address", "*" + country + "*"));
+            }
+            boolQueryBuilder.filter(countryQuery);
+        }
+
+        // 期刊过滤
+        if (journals != null && !journals.isEmpty()) {
+            boolQueryBuilder.filter(QueryBuilders.termsQuery("journal_title_source.keyword", journals));
+        }
+
+        // 文档类型过滤
+        if (documentType != null && !documentType.trim().isEmpty()) {
+            boolQueryBuilder.filter(QueryBuilders.matchQuery("article_doctype", documentType));
+        }
+
         // 按年份分类的聚合
         TermsAggregationBuilder aggregation = AggregationBuilders.terms("by_year")
                 .field("pubyear.keyword")
-                .size(100)
-                .order(Terms.Order.key(true));
+                .size(100);
+        // 排序会在后续的TreeMap中处理，保证年份顺序
 
         // 创建查询
         NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
@@ -339,104 +442,4 @@ public class Main2022ElasticSearchServiceImpl implements Main2022ElasticSearchSe
             return false;
         }
     }
-}ear.keyword")
-        .size(100)
-                .order(Terms.Order.key(true)); // 按年份排序
-
-// 创建 ElasticSearch 查询
-NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
-        .withQuery(boolQueryBuilder)
-        .addAggregation(aggregation)
-        .withPageable(PageRequest.of(0, 10000)) // 增加返回结果数量
-        .build();
-
-// 执行查询
-SearchHits<main2022> searchHits = elasticsearchRestTemplate.search(searchQuery, main2022.class);
-List<main2022> allPapers = searchHits.stream()
-        .map(hit -> hit.getContent())
-        .collect(Collectors.toList());
-
-// 获取聚合结果
-ElasticsearchAggregations elasticsearchAggregations = (ElasticsearchAggregations) searchHits.getAggregations();
-
-        if (elasticsearchAggregations != null) {
-Terms yearTerms = elasticsearchAggregations.aggregations().get("by_year");
-
-// 使用聚合结果创建年份分组
-Map<String, List<main2022>> result = new TreeMap<>(); // TreeMap保持年份排序
-
-            for (Terms.Bucket bucket : yearTerms.getBuckets()) {
-String year = bucket.getKeyAsString();
-List<main2022> yearPapers = allPapers.stream()
-        .filter(paper -> year.equals(paper.getPubyear()))
-        .collect(Collectors.toList());
-
-                if (!yearPapers.isEmpty()) {
-        result.put(year, yearPapers);
-                }
-                        }
-
-                        return result;
-        } else {
-                // 如果没有聚合结果，手动按年份分组
-                return allPapers.stream()
-                    .collect(Collectors.groupingBy(
-        paper -> paper.getPubyear() != null ? paper.getPubyear() : "Unknown",
-TreeMap::new,
-        Collectors.toList()
-                    ));
-                            }
-                            }
-
-/**
- * 增强的搜索方法，支持更多搜索选项
- */
-public Map<String, List<main2022>> advancedDisciplinarySearch(String keyword,
-                                                              String startDate,
-                                                              String endDate,
-                                                              List<String> countries,
-                                                              List<String> journals,
-                                                              String documentType) {
-    BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-
-    // 关键词搜索
-    if (keyword != null && !keyword.trim().isEmpty()) {
-        BoolQueryBuilder keywordQuery = QueryBuilders.boolQuery();
-        keywordQuery.should(QueryBuilders.matchQuery("subject_extended", keyword).boost(3.0f));
-        keywordQuery.should(QueryBuilders.matchQuery("article_title", keyword).boost(2.5f));
-        keywordQuery.should(QueryBuilders.matchQuery("abstract_text", keyword).boost(2.0f));
-        keywordQuery.should(QueryBuilders.matchQuery("keyword", keyword).boost(2.5f));
-        keywordQuery.minimumShouldMatch(1);
-        boolQueryBuilder.must(keywordQuery);
-    }
-
-    // 时间范围过滤
-    if (startDate != null && endDate != null) {
-        RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("sortdate")
-                .from(startDate + "-01-01")
-                .to(endDate + "-12-31");
-        boolQueryBuilder.filter(rangeQuery);
-    }
-
-    // 国家过滤
-    if (countries != null && !countries.isEmpty()) {
-        BoolQueryBuilder countryQuery = QueryBuilders.boolQuery();
-        for (String country : countries) {
-            countryQuery.should(QueryBuilders.wildcardQuery("reprint_address", "*" + country + "*"));
-        }
-        boolQueryBuilder.filter(countryQuery);
-    }
-
-    // 期刊过滤
-    if (journals != null && !journals.isEmpty()) {
-        boolQueryBuilder.filter(QueryBuilders.termsQuery("journal_title_source.keyword", journals));
-    }
-
-    // 文档类型过滤
-    if (documentType != null && !documentType.trim().isEmpty()) {
-        boolQueryBuilder.filter(QueryBuilders.matchQuery("article_doctype", documentType));
-    }
-
-    // 按年份分类的聚合
-    TermsAggregationBuilder aggregation = AggregationBuilders.terms("by_year")
-            .field("puby
+}

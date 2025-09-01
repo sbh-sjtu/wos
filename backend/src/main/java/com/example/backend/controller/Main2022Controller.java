@@ -21,11 +21,12 @@ import java.util.Map;
 public class Main2022Controller {
     private final Main2022Service main2022Service;
     private final Main2022ElasticSearchService main2022ElasticSearchService;
-
     private final DisciplinaryAnalysis disciplinaryAnalysis;
 
     @Autowired
-    public Main2022Controller(Main2022Service main2022Service, Main2022ElasticSearchService main2022ElasticSearchService, DisciplinaryAnalysis disciplinaryAnalysis) {
+    public Main2022Controller(Main2022Service main2022Service,
+                              Main2022ElasticSearchService main2022ElasticSearchService,
+                              DisciplinaryAnalysis disciplinaryAnalysis) {
         this.main2022Service = main2022Service;
         this.main2022ElasticSearchService = main2022ElasticSearchService;
         this.disciplinaryAnalysis = disciplinaryAnalysis;
@@ -47,12 +48,18 @@ public class Main2022Controller {
     }
 
     @PostMapping("/disciplinaryAnalysis")
-    public Map<String, Map<String, Long>> setDisciplinaryAnalysis(@RequestBody DisciplinaryRequest request) {
-        System.out.println("works");
+    public Map<String, Object> setDisciplinaryAnalysis(@RequestBody DisciplinaryRequest request) {
+        System.out.println("Disciplinary analysis request received");
         String keyword = request.getKeyword();
         String startDate = request.getStartDate();
         String endDate = request.getEndDate();
+
+        System.out.println("Keyword: " + keyword + ", Start: " + startDate + ", End: " + endDate);
+
+        // 获取按年份分组的数据
         Map<String, List<main2022>> data = main2022ElasticSearchService.searchByKeywordAndDateRange(keyword, startDate, endDate);
+
+        // 进行多维度分析
         return disciplinaryAnalysis.analyzeDisciplinaryData(data);
     }
 }

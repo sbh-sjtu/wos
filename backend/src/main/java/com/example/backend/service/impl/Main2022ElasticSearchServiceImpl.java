@@ -11,7 +11,6 @@ import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -95,6 +94,8 @@ public class Main2022ElasticSearchServiceImpl implements Main2022ElasticSearchSe
 
     @Override
     public Map<String, List<main2022>> searchByKeywordAndDateRange(String keyword, String startDate, String endDate) {
+        System.out.println("开始执行搜索 - 关键词: " + keyword + ", 开始年份: " + startDate + ", 结束年份: " + endDate);
+
         // 构建更复杂的查询，支持多字段搜索
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
 
@@ -110,19 +111,18 @@ public class Main2022ElasticSearchServiceImpl implements Main2022ElasticSearchSe
 
         boolQueryBuilder.must(keywordQuery);
 
-        // 添加时间段过滤
-        RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("sortdate")
-                .from(startDate + "-01-01")
-                .to(endDate + "-12-31");
+        // 修复时间段过滤 - 使用新的API
+        RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("pubyear")
+                .gte(startDate)  // 使用 gte 替代 from
+                .lte(endDate);   // 使用 lte 替代 to
         boolQueryBuilder.filter(rangeQuery);
 
-        // 按年份分类的聚合 - 使用通用方法避免版本兼容性问题
+        System.out.println("构建的查询: " + boolQueryBuilder.toString());
+
+        // 按年份分类的聚合
         TermsAggregationBuilder aggregation = AggregationBuilders.terms("by_year")
                 .field("pubyear.keyword")
                 .size(100);
-        // 注意：排序在不同版本中可能不同，如果需要排序，请根据具体版本添加：
-        // .order(BucketOrder.key(true)); // 较新版本 (7.x+)
-        // .order(Terms.Order.term(true)); // 较旧版本 (6.x)
 
         // 创建 ElasticSearch 查询
         NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
@@ -131,41 +131,55 @@ public class Main2022ElasticSearchServiceImpl implements Main2022ElasticSearchSe
                 .withPageable(PageRequest.of(0, 10000)) // 增加返回结果数量
                 .build();
 
-        // 执行查询
-        SearchHits<main2022> searchHits = elasticsearchRestTemplate.search(searchQuery, main2022.class);
-        List<main2022> allPapers = searchHits.stream()
-                .map(hit -> hit.getContent())
-                .collect(Collectors.toList());
+        try {
+            // 执行查询
+            SearchHits<main2022> searchHits = elasticsearchRestTemplate.search(searchQuery, main2022.class);
+            List<main2022> allPapers = searchHits.stream()
+                    .map(hit -> hit.getContent())
+                    .collect(Collectors.toList());
 
-        // 获取聚合结果
-        ElasticsearchAggregations elasticsearchAggregations = (ElasticsearchAggregations) searchHits.getAggregations();
+            System.out.println("查询到的论文总数: " + allPapers.size());
 
-        if (elasticsearchAggregations != null) {
-            Terms yearTerms = elasticsearchAggregations.aggregations().get("by_year");
+            // 获取聚合结果
+            ElasticsearchAggregations elasticsearchAggregations = (ElasticsearchAggregations) searchHits.getAggregations();
 
-            // 使用聚合结果创建年份分组
-            Map<String, List<main2022>> result = new TreeMap<>(); // TreeMap保持年份排序
+            if (elasticsearchAggregations != null) {
+                Terms yearTerms = elasticsearchAggregations.aggregations().get("by_year");
 
-            for (Terms.Bucket bucket : yearTerms.getBuckets()) {
-                String year = bucket.getKeyAsString();
-                List<main2022> yearPapers = allPapers.stream()
-                        .filter(paper -> year.equals(paper.getPubyear()))
-                        .collect(Collectors.toList());
+                // 使用聚合结果创建年份分组
+                Map<String, List<main2022>> result = new TreeMap<>(); // TreeMap保持年份排序
 
-                if (!yearPapers.isEmpty()) {
-                    result.put(year, yearPapers);
+                for (Terms.Bucket bucket : yearTerms.getBuckets()) {
+                    String year = bucket.getKeyAsString();
+                    List<main2022> yearPapers = allPapers.stream()
+                            .filter(paper -> year.equals(paper.getPubyear()))
+                            .collect(Collectors.toList());
+
+                    if (!yearPapers.isEmpty()) {
+                        result.put(year, yearPapers);
+                        System.out.println("年份 " + year + " 找到论文数: " + yearPapers.size());
+                    }
                 }
-            }
 
-            return result;
-        } else {
-            // 如果没有聚合结果，手动按年份分组
-            return allPapers.stream()
-                    .collect(Collectors.groupingBy(
-                            paper -> paper.getPubyear() != null ? paper.getPubyear() : "Unknown",
-                            TreeMap::new,
-                            Collectors.toList()
-                    ));
+                System.out.println("最终结果按年份分组: " + result.keySet());
+                return result;
+            } else {
+                System.out.println("没有聚合结果，手动按年份分组");
+                // 如果没有聚合结果，手动按年份分组
+                Map<String, List<main2022>> result = allPapers.stream()
+                        .collect(Collectors.groupingBy(
+                                paper -> paper.getPubyear() != null ? paper.getPubyear() : "Unknown",
+                                TreeMap::new,
+                                Collectors.toList()
+                        ));
+
+                System.out.println("手动分组结果: " + result.keySet());
+                return result;
+            }
+        } catch (Exception e) {
+            System.err.println("Elasticsearch 查询失败: " + e.getMessage());
+            e.printStackTrace();
+            return new TreeMap<>();
         }
     }
 
@@ -191,11 +205,11 @@ public class Main2022ElasticSearchServiceImpl implements Main2022ElasticSearchSe
             boolQueryBuilder.must(keywordQuery);
         }
 
-        // 时间范围过滤
+        // 修复时间范围过滤
         if (startDate != null && endDate != null) {
-            RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("sortdate")
-                    .from(startDate + "-01-01")
-                    .to(endDate + "-12-31");
+            RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("pubyear")
+                    .gte(startDate)
+                    .lte(endDate);
             boolQueryBuilder.filter(rangeQuery);
         }
 
@@ -222,7 +236,6 @@ public class Main2022ElasticSearchServiceImpl implements Main2022ElasticSearchSe
         TermsAggregationBuilder aggregation = AggregationBuilders.terms("by_year")
                 .field("pubyear.keyword")
                 .size(100);
-        // 排序会在后续的TreeMap中处理，保证年份顺序
 
         // 创建查询
         NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
@@ -253,9 +266,9 @@ public class Main2022ElasticSearchServiceImpl implements Main2022ElasticSearchSe
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
 
         if (startDate != null && endDate != null) {
-            RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("sortdate")
-                    .from(startDate + "-01-01")
-                    .to(endDate + "-12-31");
+            RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("pubyear")
+                    .gte(startDate)
+                    .lte(endDate);
             boolQueryBuilder.filter(rangeQuery);
         }
 

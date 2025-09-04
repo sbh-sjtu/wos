@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Layout, Pagination, Button, Typography, Badge, Empty, Spin, Select, Input, Space, Divider, message, Tooltip } from "antd";
 import { DownloadOutlined, SearchOutlined, PlusOutlined, DeleteOutlined, ClearOutlined } from '@ant-design/icons';
 import Header from '../header';
@@ -15,6 +15,7 @@ const { Option } = Select;
 function SearchResult() {
     const { state } = useLocation();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // 获取传递的数据
     const initialPaperInfo = state?.paperInfo || [];
@@ -24,8 +25,50 @@ function SearchResult() {
     const [searchFilter, setSearchFilter] = useState(initialSearchFilter);
     const [loading, setLoading] = useState(false);
     const [downloadLoading, setDownloadLoading] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+
+    // 从 URL 参数获取当前页码，如果没有则默认为 1
+    const pageFromUrl = parseInt(searchParams.get('page')) || 1;
+    const [currentPage, setCurrentPage] = useState(pageFromUrl);
+
     const pageSize = 10;
+
+    // 将搜索数据保存到 sessionStorage
+    useEffect(() => {
+        if (paperInfo.length > 0) {
+            sessionStorage.setItem('searchResults', JSON.stringify(paperInfo));
+            sessionStorage.setItem('searchFilters', JSON.stringify(searchFilter));
+        }
+    }, [paperInfo, searchFilter]);
+
+    // 如果没有数据但有 sessionStorage 数据，则恢复数据
+    useEffect(() => {
+        if (paperInfo.length === 0) {
+            const savedResults = sessionStorage.getItem('searchResults');
+            const savedFilters = sessionStorage.getItem('searchFilters');
+
+            if (savedResults && savedFilters) {
+                try {
+                    const parsedResults = JSON.parse(savedResults);
+                    const parsedFilters = JSON.parse(savedFilters);
+
+                    if (parsedResults.length > 0) {
+                        setPaperInfo(parsedResults);
+                        setSearchFilter(parsedFilters);
+                    }
+                } catch (error) {
+                    console.error('恢复搜索数据失败:', error);
+                }
+            }
+        }
+    }, [paperInfo.length]);
+
+    // 当组件挂载时，同步 URL 中的页码
+    useEffect(() => {
+        const urlPage = parseInt(searchParams.get('page')) || 1;
+        if (urlPage !== currentPage) {
+            setCurrentPage(urlPage);
+        }
+    }, [searchParams, currentPage]);
 
     // 计算当前页显示的数据
     const indexOfLastPaper = currentPage * pageSize;
@@ -91,6 +134,7 @@ function SearchResult() {
             const newPaperInfo = response.data;
             setPaperInfo(newPaperInfo);
             setCurrentPage(1); // 重置到第一页
+            setSearchParams({ page: '1' }); // 同时更新URL
             message.success(`找到 ${newPaperInfo.length} 篇文献`);
         } catch (error) {
             console.error("搜索请求失败:", error);
@@ -103,12 +147,20 @@ function SearchResult() {
     // 页码变化
     const onPageChange = (page) => {
         setCurrentPage(page);
+        // 更新 URL 参数，保存当前页码
+        setSearchParams({ page: page.toString() });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // 点击标题跳转详情页
     const handleTitleClick = (paper) => {
-        navigate("/detail", { state: { paper } });
+        // 跳转前确保当前页码已经在 URL 中
+        if (!searchParams.get('page')) {
+            setSearchParams({ page: currentPage.toString() });
+        }
+        navigate("/detail", {
+            state: { paper }
+        });
     };
 
     // 下载CSV

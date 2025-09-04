@@ -8,6 +8,50 @@ const { Title, Text, Paragraph } = Typography;
 function DetailCard({ paperInfo }) {
     console.log(paperInfo);
 
+    // HTML解码并保留特定标签的函数
+    const decodeHtmlWithTags = (html) => {
+        if (!html) return html;
+
+        // 创建一个临时div来解析HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        // 保留常见的格式标签，移除其他标签
+        const allowedTags = ['i', 'em', 'b', 'strong', 'sup', 'sub', 'u'];
+        const processNode = (node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return node.textContent;
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const tagName = node.tagName.toLowerCase();
+                if (allowedTags.includes(tagName)) {
+                    const content = Array.from(node.childNodes).map(processNode).join('');
+                    return `<${tagName}>${content}</${tagName}>`;
+                } else {
+                    // 对于不允许的标签，只返回其内容
+                    return Array.from(node.childNodes).map(processNode).join('');
+                }
+            }
+            return '';
+        };
+
+        return Array.from(tempDiv.childNodes).map(processNode).join('');
+    };
+
+    // 简单的HTML解码函数（用于不需要保留标签的地方）
+    const decodeHtml = (html) => {
+        if (!html) return html;
+        const txt = document.createElement("textarea");
+        txt.innerHTML = html;
+        return txt.value;
+    };
+
+    // 渲染带HTML标签的内容
+    const renderHtmlContent = (content) => {
+        if (!content) return content;
+        const processedContent = decodeHtmlWithTags(content);
+        return <span dangerouslySetInnerHTML={{ __html: processedContent }} />;
+    };
+
     // 构建DOI链接
     const getDoiUrl = (doi) => {
         if (!doi) return null;
@@ -22,25 +66,118 @@ function DetailCard({ paperInfo }) {
         return getDoiUrl(paperInfo.identifier_doi);
     };
 
-    // 处理作者信息 - 基于实际字段
+    // 处理作者信息
     const getAuthorInfo = () => {
-        // 假设author_fullname包含多个作者，用分号分隔
-        const authors = paperInfo.author_fullname ? paperInfo.author_fullname.split(';') : [];
+        const authors = paperInfo.author_fullname
+            ? paperInfo.author_fullname.split(';').map(a => a.trim())
+            : [];
+
+        // 通讯作者
+        let correspondingAuthors = [];
+        if (paperInfo.reprint_address) {
+            const matches = paperInfo.reprint_address.match(/【(.*?)】/g);
+            if (matches) {
+                correspondingAuthors = [...new Set(matches.map(m => m.replace(/[【】]/g, '').trim()))];
+            }
+        }
+
+        // 机构和国家解析
+        let institutionInfo = "暂无机构信息";
+        let countryMap = new Map(); // 国家 → 作者集合
+
+        if (paperInfo.address) {
+            const institutionMap = new Map();
+            const regex = /\[(.*?)\](.*?)(?=\[|$)/g;
+            let match;
+            while ((match = regex.exec(paperInfo.address)) !== null) {
+                const authorsArr = match[1].split(/;|,/).map(a => a.trim()).filter(Boolean);
+                const fullInstitution = match[2].trim().replace(/;$/, '');
+
+                // 机构名：第一个逗号前
+                const institution = fullInstitution.split(',')[0].trim();
+                if (!institutionMap.has(institution)) institutionMap.set(institution, new Set());
+                authorsArr.forEach(a => institutionMap.get(institution).add(a));
+
+                // 国家：最后一个逗号后
+                const country = fullInstitution.includes(',')
+                    ? fullInstitution.split(',').pop().trim()
+                    : fullInstitution;
+                if (!countryMap.has(country)) countryMap.set(country, new Set());
+                authorsArr.forEach(a => countryMap.get(country).add(a));
+            }
+
+            institutionInfo = Array.from(institutionMap.entries())
+                .map(([inst, authorSet]) => `${inst} ： ${Array.from(authorSet).join(', ')}`)
+                .join('\n');
+        }
 
         return {
-            // 所有作者
             allAuthors: paperInfo.author_fullname || "暂无作者信息",
-            // 第一作者（通常是第一个）
-            firstAuthor: authors.length > 0 ? authors[0].trim() : "暂无信息",
-            // 通讯作者（通常是最后一个，或者有特殊标记）
-            correspondingAuthor: authors.length > 1 ? authors[authors.length - 1].trim() : authors[0]?.trim() || "暂无信息",
-            // 作者机构信息
-            institution: paperInfo.author_address || paperInfo.author_affiliations || "暂无机构信息"
+            firstAuthor: authors.length > 0 ? authors[0] : "暂无信息",
+            correspondingAuthor:
+                correspondingAuthors.length > 0
+                    ? correspondingAuthors.join(', ')
+                    : "暂无信息",
+            institution: institutionInfo,
+            countryMap
         };
+    };
+
+    const colorPool = ['#f56a00', '#7265e6', '#ffbf00', '#00a2ae', '#13c2c2', '#2db7f5', '#87d068', '#ff7a45'];
+
+    const colorMap = new Map(); // 机构或国家 -> 颜色
+    let colorIndex = 0;
+
+    const getColor = (key) => {
+        if (!colorMap.has(key)) {
+            colorMap.set(key, colorPool[colorIndex % colorPool.length]);
+            colorIndex++;
+        }
+        return colorMap.get(key);
+    };
+
+
+    // 处理关键词信息
+    const getKeywordInfo = () => {
+        // 尝试多个可能的关键词字段
+        const keywordFields = [
+            paperInfo.keyword,
+            paperInfo.keywords_plus,
+            paperInfo.subj_group_micro_value,
+            paperInfo.subject_extended
+        ];
+
+        for (let field of keywordFields) {
+            if (field && field.trim()) {
+                return field;
+            }
+        }
+        return null;
+    };
+
+    // 处理PubMed ID
+    const getPubMedId = () => {
+        return paperInfo.identifier_pmid ||
+            "暂无";
+    };
+
+    // 处理ISBN/EISBN
+    const getIsbnInfo = () => {
+        return paperInfo.identifier_isbn ||
+            paperInfo.identifier_eisbn ||
+            "暂无";
+    };
+
+    //处理出版商名称
+    const getUnifiedPublisherName = (publisherStr) => {
+        if (!publisherStr) return "暂无出版商信息";
+        const match = publisherStr.match(/\[.*?;(.*?)\]/);
+        return match ? match[1].trim() : publisherStr;
     };
 
     const authorInfo = getAuthorInfo();
     const paperUrl = getPaperUrl();
+    const keywordInfo = getKeywordInfo();
 
     return (
         <div className="detail-container">
@@ -48,7 +185,10 @@ function DetailCard({ paperInfo }) {
                 {/* 论文标题 */}
                 <Card className="title-card" bodyStyle={{ padding: '24px' }}>
                     <Title level={2} className="paper-title">
-                        {paperInfo.article_title || "标题信息不可用"}
+                        {paperInfo.article_title ?
+                            renderHtmlContent(paperInfo.article_title) :
+                            "标题信息不可用"
+                        }
                     </Title>
                 </Card>
 
@@ -66,28 +206,82 @@ function DetailCard({ paperInfo }) {
                         >
                             <div className="info-item">
                                 <Text strong className="info-label">作者：</Text>
-                                <Text>{authorInfo.allAuthors}</Text>
+                                <Text>{renderHtmlContent(authorInfo.allAuthors)}</Text>
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">第一作者：</Text>
-                                <Text>{authorInfo.firstAuthor}</Text>
+                                <Text>{renderHtmlContent(authorInfo.firstAuthor)}</Text>
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">通讯作者：</Text>
-                                <Text>{authorInfo.correspondingAuthor}</Text>
+                                <Text>{renderHtmlContent(authorInfo.correspondingAuthor)}</Text>
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">作者机构：</Text>
-                                <Text>{authorInfo.address}</Text>
+                                <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 0 }}>
+                                    {authorInfo.institution.split('\n').map((line, index) => {
+                                        const instName = line.split('：')[0].trim();
+                                        const color = getColor(instName);
+                                        return (
+                                            <div
+                                                key={index}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 8,
+                                                    marginBottom: 4,
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        width: 12,
+                                                        height: 12,
+                                                        backgroundColor: color,
+                                                        borderRadius: 2,
+                                                        flexShrink: 0,
+                                                    }}
+                                                />
+                                                <Text style={{ margin: 0 }}>{line}</Text>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">国家/地区：</Text>
-                                <Text>{paperInfo.country || paperInfo.author_country || "暂无国家信息"}</Text>
+                                <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 0 }}>
+                                    {Array.from(authorInfo.countryMap.entries()).map(([country, authorSet], index) => {
+                                        const color = getColor(country);
+                                        return (
+                                            <div
+                                                key={index}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 8,
+                                                    marginBottom: 4,
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        width: 12,
+                                                        height: 12,
+                                                        backgroundColor: color,
+                                                        borderRadius: 2,
+                                                        flexShrink: 0,
+                                                    }}
+                                                />
+                                                <Text style={{ margin: 0 }}>
+                                                    {country} ： {Array.from(authorSet).join(', ')}
+                                                </Text>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <div className="info-item">
-                                <Text strong className="info-label">组织类型：</Text>
-                                <Text>{paperInfo.organization_type || paperInfo.institution_type || "暂无组织信息"}</Text>
-                            </div>
+
+
+
                         </Card>
                     </Col>
 
@@ -103,15 +297,19 @@ function DetailCard({ paperInfo }) {
                         >
                             <div className="info-item">
                                 <Text strong className="info-label">来源期刊：</Text>
-                                <Text>{paperInfo.journal_title_source || paperInfo.publisher || "暂无期刊信息"}</Text>
+                                <Text>{renderHtmlContent(paperInfo.journal_title_source || "暂无期刊信息")}</Text>
+                            </div>
+                            <div className="info-item">
+                                <Text strong className="info-label">出版商：</Text>
+                                <Text>{getUnifiedPublisherName(paperInfo.publisher)}</Text>
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">ISSN：</Text>
-                                <Text>{paperInfo.identifier_issn || "暂无ISSN"}</Text>
+                                <Text>{paperInfo.identifier_issn || paperInfo.issn || "暂无ISSN"}</Text>
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">EISSN：</Text>
-                                <Text>{paperInfo.identifier_eissn || "暂无EISSN"}</Text>
+                                <Text>{paperInfo.identifier_eissn || paperInfo.eissn || "暂无EISSN"}</Text>
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">发表时间：</Text>
@@ -124,7 +322,7 @@ function DetailCard({ paperInfo }) {
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">语言：</Text>
-                                <Tag color="blue">{paperInfo.languages || paperInfo.language || "English"}</Tag>
+                                <Tag color="blue">{paperInfo.languages || "English"}</Tag>
                             </div>
                         </Card>
                     </Col>
@@ -149,7 +347,10 @@ function DetailCard({ paperInfo }) {
                         }}
                         className="abstract-content"
                     >
-                        {paperInfo.abstract_text || "暂无摘要信息"}
+                        {paperInfo.abstract_text ?
+                            renderHtmlContent(paperInfo.abstract_text) :
+                            "暂无摘要信息"
+                        }
                     </Paragraph>
                 </Card>
 
@@ -167,10 +368,10 @@ function DetailCard({ paperInfo }) {
                             <div className="info-item">
                                 <Text strong className="info-label">关键词：</Text>
                                 <div style={{ marginTop: 8 }}>
-                                    {paperInfo.keyword ?
-                                        paperInfo.keyword.split(/[;,]/).map((keyword, index) => (
+                                    {keywordInfo ?
+                                        keywordInfo.split(/[;,]/).map((keyword, index) => (
                                             <Tag key={index} style={{ marginBottom: 4, marginRight: 4 }}>
-                                                {keyword.trim()}
+                                                {renderHtmlContent(keyword.trim())}
                                             </Tag>
                                         )) :
                                         <Text type="secondary">暂无关键词</Text>
@@ -180,13 +381,13 @@ function DetailCard({ paperInfo }) {
                             <div className="info-item">
                                 <Text strong className="info-label">学科分类：</Text>
                                 <Text>
-                                    {paperInfo.subheadings || "暂无学科分类"}
+                                    {renderHtmlContent(paperInfo.subheadings || paperInfo.subject_categories || paperInfo.categories || "暂无学科分类")}
                                 </Text>
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">研究领域：</Text>
                                 <Text>
-                                    {paperInfo.subject_extended || paperInfo.research_area || "暂无研究领域信息"}
+                                    {renderHtmlContent(paperInfo.subject_extended || paperInfo.research_area || paperInfo.research_domains || "暂无研究领域信息")}
                                 </Text>
                             </div>
                         </Card>
@@ -206,14 +407,14 @@ function DetailCard({ paperInfo }) {
                                 <Text>
                                     {paperInfo.page_begin && paperInfo.page_end
                                         ? `${paperInfo.page_begin}-${paperInfo.page_end}`
-                                        : paperInfo.pages || "暂无页码信息"
+                                        : paperInfo.pages || paperInfo.page_range || "暂无页码信息"
                                     }
                                 </Text>
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">文献类型：</Text>
                                 <Tag color="green">
-                                    {paperInfo.document_type || paperInfo.publication_type || "研究论文"}
+                                    {paperInfo.article_type || "不明确"}
                                 </Tag>
                             </div>
                         </Card>
@@ -240,19 +441,8 @@ function DetailCard({ paperInfo }) {
                                         copyable={{ text: paperInfo.identifier_doi }}
                                         style={{ wordBreak: 'break-all' }}
                                     >
-                                        {paperInfo.identifier_doi || "暂无DOI"}
+                                        {paperInfo.identifier_doi || paperInfo.doi || "暂无DOI"}
                                     </Text>
-                                    {paperInfo.identifier_doi && (
-                                        <Button
-                                            type="primary"
-                                            size="small"
-                                            icon={<LinkOutlined />}
-                                            onClick={() => window.open(getDoiUrl(paperInfo.identifier_doi), '_blank')}
-                                            style={{ backgroundColor: '#b82e28' }}
-                                        >
-                                            访问DOI链接
-                                        </Button>
-                                    )}
                                 </Space>
                             </div>
                         </Col>
@@ -291,17 +481,17 @@ function DetailCard({ paperInfo }) {
                     <Row gutter={[16, 16]} style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
                         <Col xs={24} sm={8}>
                             <div className="info-item">
-                                <Text strong className="info-label">WOS标识：</Text>
-                                <Text copyable={{ text: paperInfo.wos_uid }}>
-                                    {paperInfo.wos_uid || "暂无"}
+                                <Text strong className="info-label">IDS：</Text>
+                                <Text copyable={{ text: paperInfo.identifier_accession_no }}>
+                                    {paperInfo.identifier_accession_no || "暂无"}
                                 </Text>
                             </div>
                         </Col>
                         <Col xs={24} sm={8}>
                             <div className="info-item">
                                 <Text strong className="info-label">PubMed ID：</Text>
-                                <Text copyable={{ text: paperInfo.identifier_pmid }}>
-                                    {paperInfo.identifier_pmid || paperInfo.identifier_pmid || "暂无"}
+                                <Text copyable={{ text: getPubMedId() }}>
+                                    {getPubMedId()}
                                 </Text>
                             </div>
                         </Col>
@@ -309,7 +499,7 @@ function DetailCard({ paperInfo }) {
                             <div className="info-item">
                                 <Text strong className="info-label">ISBN/EISBN：</Text>
                                 <Text>
-                                    {paperInfo.identifier_isbn || paperInfo.identifier_eisbn || "暂无"}
+                                    {getIsbnInfo()}
                                 </Text>
                             </div>
                         </Col>

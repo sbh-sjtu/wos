@@ -9,7 +9,7 @@ import org.springframework.data.elasticsearch.annotations.Document;
  * 基于实际的SQL Server表结构进行调整
  */
 @Entity
-@Table(name = "Wos_2022")  // 根据实际的表名格式调整，如 Wos_2023, Wos_2024 等
+@Table(name = "Wos_2000")  // 根据实际的表名格式调整，如 Wos_2023, Wos_2024 等
 @Data
 @Document(indexName = "main")
 public class main2022 {

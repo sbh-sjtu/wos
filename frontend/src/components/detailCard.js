@@ -72,12 +72,13 @@ function DetailCard({ paperInfo }) {
             ? paperInfo.author_fullname.split(';').map(a => a.trim())
             : [];
 
-        // 通讯作者
+        // 通讯作者 - 修复正则表达式
         let correspondingAuthors = [];
         if (paperInfo.reprint_address) {
-            const matches = paperInfo.reprint_address.match(/【(.*?)】/g);
+            // 修复正则表达式，使用方括号匹配
+            const matches = paperInfo.reprint_address.match(/\[(.*?)\]/g);
             if (matches) {
-                correspondingAuthors = [...new Set(matches.map(m => m.replace(/[【】]/g, '').trim()))];
+                correspondingAuthors = [...new Set(matches.map(m => m.replace(/[\[\]]/g, '').trim()))];
             }
         }
 
@@ -135,7 +136,6 @@ function DetailCard({ paperInfo }) {
         }
         return colorMap.get(key);
     };
-
 
     // 处理关键词信息
     const getKeywordInfo = () => {
@@ -227,8 +227,7 @@ function DetailCard({ paperInfo }) {
                                                 key={index}
                                                 style={{
                                                     display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 8,
+                                                    alignItems: 'flex-start',
                                                     marginBottom: 4,
                                                 }}
                                             >
@@ -239,9 +238,19 @@ function DetailCard({ paperInfo }) {
                                                         backgroundColor: color,
                                                         borderRadius: 2,
                                                         flexShrink: 0,
+                                                        marginTop: 4,
+                                                        marginRight: 8
                                                     }}
                                                 />
-                                                <Text style={{ margin: 0 }}>{line}</Text>
+                                                <Text style={{
+                                                    margin: 0,
+                                                    flex: 1,
+                                                    lineHeight: '20px',
+                                                    wordBreak: 'break-word',
+                                                    whiteSpace: 'pre-wrap'
+                                                }}>
+                                                    {line}
+                                                </Text>
                                             </div>
                                         );
                                     })}
@@ -257,8 +266,7 @@ function DetailCard({ paperInfo }) {
                                                 key={index}
                                                 style={{
                                                     display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 8,
+                                                    alignItems: 'flex-start',
                                                     marginBottom: 4,
                                                 }}
                                             >
@@ -269,9 +277,17 @@ function DetailCard({ paperInfo }) {
                                                         backgroundColor: color,
                                                         borderRadius: 2,
                                                         flexShrink: 0,
+                                                        marginTop: 4,
+                                                        marginRight: 8
                                                     }}
                                                 />
-                                                <Text style={{ margin: 0 }}>
+                                                <Text style={{
+                                                    margin: 0,
+                                                    flex: 1,
+                                                    lineHeight: '20px',
+                                                    wordBreak: 'break-word',
+                                                    whiteSpace: 'pre-wrap'
+                                                }}>
                                                     {country} ： {Array.from(authorSet).join(', ')}
                                                 </Text>
                                             </div>

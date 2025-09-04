@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from "react-router-dom";
-import { Layout, Pagination, Button, Typography, Badge, Empty, Spin } from "antd";
-import { DownloadOutlined } from '@ant-design/icons';
+import { Layout, Pagination, Button, Typography, Badge, Empty, Spin, Select, Input, Space, Divider, message, Tooltip } from "antd";
+import { DownloadOutlined, SearchOutlined, PlusOutlined, DeleteOutlined, ClearOutlined } from '@ant-design/icons';
 import Header from '../header';
 import Footer from '../footer';
 import PaperCard from '../paperCard';
@@ -10,63 +10,138 @@ import '../../styles/searchResult.css';
 
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 function SearchResult() {
     const { state } = useLocation();
     const navigate = useNavigate();
-    // 获取 papers 数据，如果没有则为 []
-    const paperInfo = state?.paperInfo || [];
+
+    // 获取传递的数据
+    const initialPaperInfo = state?.paperInfo || [];
+    const initialSearchFilter = state?.searchFilter || [{ id: 1, selects: ['AND', 1], input: '' }];
+
+    const [paperInfo, setPaperInfo] = useState(initialPaperInfo);
+    const [searchFilter, setSearchFilter] = useState(initialSearchFilter);
     const [loading, setLoading] = useState(false);
+    const [downloadLoading, setDownloadLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 10; // 每页显示的数量
+    const pageSize = 10;
 
     // 计算当前页显示的数据
     const indexOfLastPaper = currentPage * pageSize;
     const indexOfFirstPaper = indexOfLastPaper - pageSize;
     const currentPapers = paperInfo.slice(indexOfFirstPaper, indexOfLastPaper);
 
-    // 改变页码
-    const onPageChange = (page) => {
-        setCurrentPage(page);
-        // 滚动到页面顶部
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    // 添加搜索条件
+    const handleAddFilter = () => {
+        const newId = searchFilter.length + 1;
+        setSearchFilter([...searchFilter, { id: newId, selects: ['AND', 1], input: '' }]);
     };
 
-    const handleTitleClick = (paper) => {
-        navigate("/detail", { state: { paper } }); // 传递 paperInfo 对象
+    // 删除搜索条件
+    const handleDeleteFilter = (filterId) => {
+        if (searchFilter.length === 1) return; // 保留至少一个条件
+        const updatedFilters = searchFilter.filter(filter => filter.id !== filterId);
+        const reassignedFilters = updatedFilters.map((filter, index) => (
+            { ...filter, id: index + 1 }
+        ));
+        setSearchFilter(reassignedFilters);
     };
 
-    const downLoadCSV = async () => {
-        if (paperInfo.length === 0) return;
-        
+    // 清空所有条件
+    const handleClearAll = () => {
+        setSearchFilter([{ id: 1, selects: ['AND', 1], input: '' }]);
+    };
+
+    // 更新选择值
+    const handleSelectChange = (filterId, selectIndex, newValue) => {
+        setSearchFilter(searchFilter.map(filter =>
+            filter.id === filterId
+                ? { ...filter, selects: filter.selects.map((value, index) =>
+                        index === selectIndex ? newValue : value) }
+                : filter
+        ));
+    };
+
+    // 更新输入值
+    const handleInputChange = (filterId, newValue) => {
+        setSearchFilter(searchFilter.map(filter =>
+            filter.id === filterId
+                ? { ...filter, input: newValue }
+                : filter
+        ));
+    };
+
+    // 执行搜索
+    const handleSearch = async () => {
+        const emptyFields = searchFilter.filter(filter => !filter.input.trim());
+        if (emptyFields.length > 0) {
+            message.warning("请完整填写搜索条件");
+            return;
+        }
+
         setLoading(true);
+
         try {
-            // 发送下载请求
-            const response = await axios.post('http://localhost:8888/download/csv', paperInfo, {
-                responseType: 'blob', // 指定响应类型为 Blob，用于处理文件流
-                headers: {
-                    'Content-Type': 'application/json', // 指定请求体为 JSON 格式
-                },
-            });
-            
-            // 创建一个下载链接并触发下载
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'wos_paper_detail.csv'); // 设置下载文件名
-            document.body.appendChild(link);
-            link.click();
-            link.parentNode.removeChild(link); // 下载完成后移除链接
+            const response = await axios.post(
+                "http://localhost:8888/main2022/advancedSearch",
+                searchFilter
+            );
+
+            const newPaperInfo = response.data;
+            setPaperInfo(newPaperInfo);
+            setCurrentPage(1); // 重置到第一页
+            message.success(`找到 ${newPaperInfo.length} 篇文献`);
         } catch (error) {
-            console.error('文件下载失败:', error);
+            console.error("搜索请求失败:", error);
+            message.error("搜索失败，请稍后重试");
         } finally {
             setLoading(false);
         }
     };
 
+    // 页码变化
+    const onPageChange = (page) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // 点击标题跳转详情页
+    const handleTitleClick = (paper) => {
+        navigate("/detail", { state: { paper } });
+    };
+
+    // 下载CSV
+    const downloadCSV = async () => {
+        if (paperInfo.length === 0) return;
+
+        setDownloadLoading(true);
+        try {
+            const response = await axios.post('http://localhost:8888/download/csv', paperInfo, {
+                responseType: 'blob',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'wos_paper_detail.csv');
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+        } catch (error) {
+            console.error('文件下载失败:', error);
+            message.error('下载失败，请稍后重试');
+        } finally {
+            setDownloadLoading(false);
+        }
+    };
+
     return (
         <Layout className="search-result-layout">
-            <Layout.Header 
+            <Layout.Header
                 style={{
                     padding: 0,
                     backgroundColor: 'white',
@@ -78,64 +153,188 @@ function SearchResult() {
             >
                 <Header />
             </Layout.Header>
-            
+
             <Layout className="result-content">
                 <div className="result-container">
                     <Layout hasSider>
-                        <Sider 
-                            width={280} 
+                        <Sider
+                            width={320}
                             className="result-sider"
                             theme="light"
                         >
                             <div className="sider-content">
+                                {/* 搜索结果统计 */}
                                 <div className="result-summary">
-                                    <Title level={4}>搜索结果</Title>
-                                    <Badge 
-                                        count={paperInfo.length} 
-                                        style={{ 
+                                    <Title level={4} style={{ marginBottom: 16 }}>搜索结果</Title>
+                                    <Badge
+                                        count={paperInfo.length}
+                                        style={{
                                             backgroundColor: '#b82e28',
-                                            marginBottom: '20px' 
-                                        }} 
+                                            marginBottom: 16
+                                        }}
                                         overflowCount={9999}
                                     >
                                         <Text style={{ fontSize: '16px', marginRight: '10px' }}>找到文献</Text>
                                     </Badge>
 
                                     <div className="action-buttons">
-                                        <Button 
-                                            type="primary" 
-                                            icon={<DownloadOutlined />} 
-                                            onClick={downLoadCSV}
-                                            loading={loading}
+                                        <Button
+                                            type="primary"
+                                            icon={<DownloadOutlined />}
+                                            onClick={downloadCSV}
+                                            loading={downloadLoading}
                                             disabled={paperInfo.length === 0}
-                                            style={{ 
-                                                backgroundColor: '#b82e28', 
+                                            style={{
+                                                backgroundColor: '#b82e28',
                                                 borderColor: '#b82e28',
-                                                width: '100%'
+                                                width: '100%',
+                                                marginBottom: 8
                                             }}
                                         >
                                             导出为CSV
                                         </Button>
+
+                                        <div className="result-stats">
+                                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                                当前显示 {indexOfFirstPaper + 1}-{Math.min(indexOfLastPaper, paperInfo.length)} 条，
+                                                共 {paperInfo.length} 条记录
+                                            </Text>
+                                        </div>
                                     </div>
                                 </div>
-                                
-                                <div className="filter-options">
-                                    <Title level={5}>筛选选项</Title>
-                                    <div className="filter-placeholder">
-                                        <Text type="secondary">高级筛选功能即将推出</Text>
-                                    </div>
+
+                                <Divider style={{ margin: '16px 0' }} />
+
+                                {/* 精简版高级搜索 */}
+                                <div className="advanced-search-panel">
+                                    <Title level={5} style={{ marginBottom: 16, color: '#b82e28' }}>
+                                        修改搜索条件
+                                    </Title>
+
+                                    <Spin spinning={loading}>
+                                        <div className="compact-search-form">
+                                            {/* 第一个条件（不显示AND/OR选择器） */}
+                                            <div className="compact-condition">
+                                                <Select
+                                                    style={{ width: '100%', marginBottom: 8 }}
+                                                    value={searchFilter[0]?.selects[1]}
+                                                    onChange={(value) => handleSelectChange(1, 1, value)}
+                                                    size="small"
+                                                >
+                                                    <Option value={1}>Topic</Option>
+                                                    <Option value={2}>Title</Option>
+                                                    <Option value={3}>Author</Option>
+                                                    <Option value={4}>Publication/Source Titles</Option>
+                                                    <Option value={5}>Year Published</Option>
+                                                    <Option value={6}>DOI</Option>
+                                                </Select>
+                                                <Input
+                                                    placeholder="输入关键词..."
+                                                    value={searchFilter[0]?.input || ''}
+                                                    onChange={(e) => handleInputChange(1, e.target.value)}
+                                                    size="small"
+                                                />
+                                            </div>
+
+                                            {/* 其他条件 */}
+                                            {searchFilter.slice(1).map(filter => (
+                                                <div key={filter.id} className="compact-condition">
+                                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                                                        <Select
+                                                            style={{ width: 70, marginRight: 8 }}
+                                                            value={filter.selects[0]}
+                                                            onChange={(value) => handleSelectChange(filter.id, 0, value)}
+                                                            size="small"
+                                                        >
+                                                            <Option value="AND">AND</Option>
+                                                            <Option value="OR">OR</Option>
+                                                        </Select>
+                                                        <Select
+                                                            style={{ flex: 1 }}
+                                                            value={filter.selects[1]}
+                                                            onChange={(value) => handleSelectChange(filter.id, 1, value)}
+                                                            size="small"
+                                                        >
+                                                            <Option value={1}>Topic</Option>
+                                                            <Option value={2}>Title</Option>
+                                                            <Option value={3}>Author</Option>
+                                                            <Option value={4}>Publication/Source Titles</Option>
+                                                            <Option value={5}>Year Published</Option>
+                                                            <Option value={6}>DOI</Option>
+                                                        </Select>
+                                                        <Tooltip title="删除条件">
+                                                            <Button
+                                                                type="text"
+                                                                icon={<DeleteOutlined />}
+                                                                onClick={() => handleDeleteFilter(filter.id)}
+                                                                size="small"
+                                                                style={{ marginLeft: 4, color: '#b82e28' }}
+                                                            />
+                                                        </Tooltip>
+                                                    </div>
+                                                    <Input
+                                                        placeholder="输入关键词..."
+                                                        value={filter.input}
+                                                        onChange={(e) => handleInputChange(filter.id, e.target.value)}
+                                                        size="small"
+                                                    />
+                                                </div>
+                                            ))}
+
+                                            {/* 操作按钮 */}
+                                            <div className="compact-actions">
+                                                <Button
+                                                    type="dashed"
+                                                    icon={<PlusOutlined />}
+                                                    onClick={handleAddFilter}
+                                                    size="small"
+                                                    style={{
+                                                        borderColor: '#b82e28',
+                                                        color: '#b82e28',
+                                                        marginBottom: 8,
+                                                        width: '100%'
+                                                    }}
+                                                >
+                                                    添加条件
+                                                </Button>
+
+                                                <Space size="small" style={{ width: '100%' }}>
+                                                    <Button
+                                                        icon={<ClearOutlined />}
+                                                        onClick={handleClearAll}
+                                                        size="small"
+                                                        style={{ flex: 1 }}
+                                                    >
+                                                        清空
+                                                    </Button>
+                                                    <Button
+                                                        type="primary"
+                                                        icon={<SearchOutlined />}
+                                                        onClick={handleSearch}
+                                                        size="small"
+                                                        style={{
+                                                            background: '#b82e28',
+                                                            flex: 1
+                                                        }}
+                                                    >
+                                                        搜索
+                                                    </Button>
+                                                </Space>
+                                            </div>
+                                        </div>
+                                    </Spin>
                                 </div>
                             </div>
                         </Sider>
-                        
+
                         <Content className="result-main-content">
                             <Spin spinning={loading}>
                                 {paperInfo.length > 0 ? (
                                     <div className="paper-cards-container">
                                         {currentPapers.map((paper, index) => (
                                             <div key={index} className="paper-card-wrapper">
-                                                <PaperCard 
-                                                    paperInfo={paper} 
+                                                <PaperCard
+                                                    paperInfo={paper}
                                                     onTitleClick={() => handleTitleClick(paper)}
                                                 />
                                             </div>
@@ -143,16 +342,16 @@ function SearchResult() {
                                     </div>
                                 ) : (
                                     <div className="no-results">
-                                        <Empty 
-                                            description="没有找到匹配的文献" 
+                                        <Empty
+                                            description="没有找到匹配的文献"
                                             image={Empty.PRESENTED_IMAGE_SIMPLE}
                                         />
                                     </div>
                                 )}
-                                
+
                                 {paperInfo.length > 0 && (
                                     <div className="pagination-container">
-                                        <Pagination 
+                                        <Pagination
                                             current={currentPage}
                                             pageSize={pageSize}
                                             total={paperInfo.length}
@@ -168,7 +367,7 @@ function SearchResult() {
                     </Layout>
                 </div>
             </Layout>
-            
+
             <Layout.Footer
                 style={{
                     padding: 0,

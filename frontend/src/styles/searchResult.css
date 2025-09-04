@@ -19,7 +19,7 @@
   padding: 0 20px;
 }
 
-/* 侧边栏样式 */
+/* 侧边栏样式 - 增加宽度以容纳搜索表单 */
 .result-sider {
   background-color: white !important;
   border-radius: 8px;
@@ -28,6 +28,8 @@
   height: fit-content;
   position: sticky;
   top: 90px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 
 .sider-content {
@@ -35,21 +37,95 @@
 }
 
 .result-summary {
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .action-buttons {
   margin-top: 15px;
 }
 
-.filter-options {
-  margin-bottom: 25px;
-  padding-top: 15px;
-  border-top: 1px solid #f0f0f0;
+.result-stats {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  text-align: center;
 }
 
-.filter-placeholder {
-  padding: 15px 0;
+/* 新增：紧凑型高级搜索面板样式 */
+.advanced-search-panel {
+  margin-top: 20px;
+}
+
+.compact-search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.compact-condition {
+  padding: 12px;
+  background-color: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+  transition: border-color 0.3s;
+}
+
+.compact-condition:hover {
+  border-color: #b82e28;
+}
+
+.compact-condition:first-child {
+  background-color: #fff7f6;
+  border-color: rgba(184, 46, 40, 0.2);
+}
+
+.compact-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Select和Input的紧凑样式 */
+.compact-condition .ant-select-selector,
+.compact-condition .ant-input {
+  border-radius: 4px !important;
+}
+
+.compact-condition .ant-select-selector:hover,
+.compact-condition .ant-input:hover {
+  border-color: #b82e28 !important;
+}
+
+.compact-condition .ant-select-focused .ant-select-selector,
+.compact-condition .ant-input:focus {
+  border-color: #b82e28 !important;
+  box-shadow: 0 0 0 2px rgba(184, 46, 40, 0.1) !important;
+}
+
+/* 删除按钮样式 */
+.compact-condition .ant-btn-text:hover {
+  background-color: rgba(184, 46, 40, 0.1) !important;
+}
+
+/* 操作按钮样式 */
+.compact-actions .ant-btn {
+  border-radius: 4px;
+}
+
+.compact-actions .ant-btn-primary {
+  background-color: #b82e28;
+  border-color: #b82e28;
+}
+
+.compact-actions .ant-btn-primary:hover {
+  background-color: #a01b16;
+  border-color: #a01b16;
+}
+
+.compact-actions .ant-btn-dashed:hover {
+  background-color: rgba(184, 46, 40, 0.05);
 }
 
 /* 主内容区域样式 */
@@ -93,18 +169,76 @@
   height: 400px;
 }
 
+/* 加载状态遮罩 */
+.result-main-content .ant-spin-container {
+  min-height: 400px;
+}
+
+/* 滚动条样式 */
+.result-sider::-webkit-scrollbar {
+  width: 4px;
+}
+
+.result-sider::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 2px;
+}
+
+.result-sider::-webkit-scrollbar-thumb {
+  background: #b82e28;
+  border-radius: 2px;
+}
+
+.result-sider::-webkit-scrollbar-thumb:hover {
+  background: #a01b16;
+}
+
 /* 响应式调整 */
 @media (max-width: 992px) {
   .result-container {
     padding: 0 10px;
   }
-  
+
   .result-sider {
     width: 100% !important;
     min-width: 100% !important;
     max-width: 100% !important;
     margin-right: 0;
     margin-bottom: 20px;
+    position: relative;
+    max-height: none;
+  }
+
+  .compact-search-form {
+    gap: 8px;
+  }
+
+  .compact-condition {
+    padding: 8px;
+  }
+
+  .sider-content {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .compact-condition > div {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .compact-condition .ant-select,
+  .compact-condition .ant-btn {
+    width: 100%;
+  }
+
+  .compact-actions .ant-space {
+    width: 100%;
+  }
+
+  .compact-actions .ant-btn {
+    flex: 1;
   }
 }
 

@@ -1,135 +1,254 @@
-.detailBackground {
+/* detailCard.css - 优化后的文献详情页样式 */
+
+.detail-container {
     display: flex;
-    flex-direction: column;
     justify-content: center;
-    align-items: center;
-}
-
-.detailBackground .detail-paperTitle {
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    background-color: white;
-    width: 1200px;
-    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
-    margin-top: 20px;
-}
-
-.paperTitle {
     padding: 20px;
+    background-color: #f5f5f5;
+    min-height: 100%;
 }
 
-.sectionForPaper {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    background-color: white;
-    width: 1200px;
-    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
-    margin-top: 20px;
+.paperDetailContent {
+    width: 100%;
+    background-color: #f5f5f5;
 }
 
-.sectionForPaper .section-author {
-    width: 600px;
+.detail-content {
+    width: 100%;
+    max-width: 1200px;
 }
 
-.section-author .authorInfo {
-    display: flex;
-    flex-direction: column;
-    padding-left: 40px;
+/* 标题卡片 */
+.title-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    border: none;
 }
 
-.section-publisher .publisherInfo {
-    display: flex;
-    flex-direction: column;
-    padding-left: 40px;
+.paper-title {
+    color: #1a1a1a;
+    margin-bottom: 0;
+    line-height: 1.4;
+    font-weight: 600;
 }
 
-.sectionForPaper .section-publisher {
-    width: 600px;
+/* 信息卡片通用样式 */
+.info-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
+    border: none;
+    height: 100%;
 }
 
+.info-card .ant-card-head {
+    border-bottom: 1px solid #f0f0f0;
+    background-color: #fafafa;
+}
+
+.info-card .ant-card-head-title {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+/* 摘要卡片 */
+.abstract-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
+    border: none;
+}
+
+.abstract-card .ant-card-head {
+    border-bottom: 1px solid #f0f0f0;
+    background-color: #fafafa;
+}
+
+.abstract-content {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 0;
+    text-align: justify;
+}
+
+/* 链接卡片 */
+.link-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
+    border: none;
+}
+
+.link-card .ant-card-head {
+    border-bottom: 1px solid #f0f0f0;
+    background-color: #fafafa;
+}
+
+/* 信息项样式 */
 .info-item {
     display: flex;
-    flex-direction: row;
+    margin-bottom: 16px;
+    align-items: flex-start;
 }
 
-.infoTitle {
-    padding-left: 40px;
+.info-item:last-child {
+    margin-bottom: 0;
 }
 
-.authorLabel {
+.info-label {
     min-width: 100px;
-    font-size: 15px;
-    font-weight: bold;
-    padding-right: 10px;
-    display: flex;
-    align-items: center;
+    color: #262626;
+    font-size: 14px;
+    margin-right: 12px;
+    flex-shrink: 0;
 }
 
-.publisherLabel {
-    min-width: 100px;
-    font-size: 15px;
-    font-weight: bold;
-    padding-right: 10px;
-    display: flex;
-    align-items: center;
+.info-item .ant-typography {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
-.sectionForPaper .section-discipline {
-    width: 600px;
+/* 指标数值样式 */
+.metric-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #b82e28;
 }
 
-.section-discipline .disciplineInfo {
-    display: flex;
-    flex-direction: column;
-    padding-left: 40px;
+/* 关键词标签样式 */
+.info-item .ant-tag {
+    margin-right: 8px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 2px 8px;
 }
 
-.sectionForPaper .section-impact {
-    width: 600px;
+/* 链接按钮样式 */
+.info-item .ant-btn-link {
+    color: #b82e28;
+    font-size: 12px;
+    padding: 0;
+    height: auto;
 }
 
-.section-impact .impactInfo {
-    display: flex;
-    flex-direction: column;
-    padding-left: 40px;
+.info-item .ant-btn-link:hover {
+    color: #a01b16;
 }
 
-.disciplineLabel {
-    min-width: 100px;
-    font-size: 15px;
-    font-weight: bold;
-    padding-right: 10px;
-    display: flex;
-    align-items: center;
+.info-item .ant-btn-primary {
+    background-color: #b82e28;
+    border-color: #b82e28;
+    font-size: 12px;
+    height: 28px;
 }
 
-.impactLabel {
-    min-width: 100px;
-    font-size: 15px;
-    font-weight: bold;
-    padding-right: 10px;
-    display: flex;
-    align-items: center;
+.info-item .ant-btn-primary:hover {
+    background-color: #a01b16;
+    border-color: #a01b16;
 }
 
-.sectionForPaper .section-link {
-    width: 1200px;
+/* 复制功能样式 */
+.ant-typography-copy {
+    color: #b82e28;
+    margin-left: 8px;
 }
 
-.section-link .linkInfo {
-    display: flex;
-    flex-direction: column;
-    padding-left: 40px;
+.ant-typography-copy:hover {
+    color: #a01b16;
 }
 
-.linkLabel {
-    min-width: 100px;
-    font-size: 15px;
-    font-weight: bold;
-    padding-right: 10px;
-    display: flex;
-    align-items: center;
+/* 展开/收起按钮样式 */
+.ant-typography .ant-typography-expand {
+    color: #b82e28;
 }
 
+.ant-typography .ant-typography-expand:hover {
+    color: #a01b16;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .detail-container {
+        padding: 10px;
+    }
+
+    .title-card .ant-card-body {
+        padding: 16px;
+    }
+
+    .paper-title {
+        font-size: 20px;
+    }
+
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .info-label {
+        min-width: auto;
+        margin-bottom: 4px;
+        margin-right: 0;
+    }
+
+    .abstract-content {
+        font-size: 14px;
+    }
+
+    .info-card .ant-card-body {
+        padding: 16px;
+    }
+}
+
+@media (max-width: 576px) {
+    .detail-content {
+        margin: 0;
+    }
+
+    .paper-title {
+        font-size: 18px;
+    }
+
+    .info-card .ant-card-head-title {
+        font-size: 14px;
+    }
+
+    .abstract-content {
+        font-size: 13px;
+        line-height: 1.5;
+    }
+}
+
+/* 加载状态和动画效果 */
+.info-card {
+    transition: box-shadow 0.3s ease;
+}
+
+.info-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 标签颜色主题 */
+.ant-tag {
+    border-color: #b82e28;
+    color: #b82e28;
+    background-color: rgba(184, 46, 40, 0.1);
+}
+
+/* 空状态文本样式 */
+.ant-typography-secondary {
+    font-style: italic;
+}
+
+/* 文本选择样式 */
+.info-item .ant-typography::selection {
+    background-color: rgba(184, 46, 40, 0.2);
+}
+
+/* Space组件间距调整 */
+.info-item .ant-space {
+    flex-wrap: wrap;
+}
+
+.info-item .ant-space-item {
+    margin-bottom: 4px;
+}

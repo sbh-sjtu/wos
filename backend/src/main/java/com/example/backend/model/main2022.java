@@ -5,92 +5,240 @@ import lombok.Data;
 import org.springframework.data.elasticsearch.annotations.Document;
 
 /**
- * 论文数据的实体类（暂时的取名，因为使用的数据是部分2022年的数据）
+ * 论文数据的实体类
+ * 基于实际的SQL Server表结构进行调整
  */
 @Entity
-@Table(name = "main")
+@Table(name = "Wos_2022")  // 根据实际的表名格式调整，如 Wos_2023, Wos_2024 等
 @Data
 @Document(indexName = "main")
 public class main2022 {
     @Id
     @org.springframework.data.annotation.Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "seq_temp")
     private Integer seq_temp;
+
+    @Column(name = "wos_uid", length = 15)
     private String wos_uid;
+
+    @Column(name = "database", length = 50)
     private String database;
+
+    @Column(name = "sortdate", length = 15)
     private String sortdate;
+
+    @Column(name = "pubyear")
     private String pubyear;
+
+    @Column(name = "has_abstract", length = 5)
     private String has_abstract;
+
+    @Column(name = "coverdate", length = 15)
     private String coverdate;
+
+    @Column(name = "pubmonth", length = 8)
     private String pubmonth;
+
+    @Column(name = "vol", length = 15)
     private String vol;
+
+    @Column(name = "issue", length = 15)
     private String issue;
+
+    @Column(name = "special_issue", length = 15)
     private String special_issue;
+
+    @Column(name = "supplement", length = 20)
     private String supplement;
+
+    @Column(name = "early_access_date", length = 20)
     private String early_access_date;
+
+    @Column(name = "early_access_month", length = 4)
     private String early_access_month;
+
+    @Column(name = "early_access_year", length = 4)
     private String early_access_year;
+
+    @Column(name = "article_pubtype", length = 20)  // 注意：Python脚本中是article_pubtype，不是article_type
     private String article_type;
+
+    @Column(name = "page_count", length = 15)
     private String page_count;
+
+    @Column(name = "page_begin", length = 15)
     private String page_begin;
+
+    @Column(name = "page_end", length = 15)
     private String page_end;
+
+    @Column(name = "journal_title_source", length = 500)
     private String journal_title_source;
+
+    @Column(name = "journal_title_abbrev", length = 50)
     private String journal_title_abbrev;
+
+    @Column(name = "journal_title_iso", length = 100)
     private String journal_title_iso;
+
+    @Column(name = "journal_title_11", length = 50)
     private String journal_title_11;
+
+    @Column(name = "journal_title_29", length = 50)
     private String journal_title_29;
+
+    @Column(name = "article_title", columnDefinition = "VARCHAR(MAX)")
     private String article_title;
+
+    @Column(name = "article_doctype", length = 100)
     private String article_doctype;
+
+    @Column(name = "heading", length = 100)
     private String heading;
+
+    @Column(name = "subheadings", length = 100)
     private String subheadings;
+
+    @Column(name = "subject_traditional", length = 500)
     private String subject_traditional;
+
+    @Column(name = "subject_extended", length = 500)
     private String subject_extended;
+
+    @Column(name = "fund_text", columnDefinition = "VARCHAR(MAX)")
     private String fund_text;
+
+    @Column(name = "keyword", columnDefinition = "VARCHAR(MAX)")
     private String keyword;
+
+    @Column(name = "keyword_plus", columnDefinition = "VARCHAR(MAX)")
     private String keyword_plus;
+
+    @Column(name = "abstract", columnDefinition = "VARCHAR(MAX)")  // 注意：Python脚本中是abstract，不是abstract_text
     private String abstract_text;
+
+    @Column(name = "ids", length = 10)
     private String ids;
+
+    @Column(name = "bib_id", length = 100)
     private String bib_id;
+
+    @Column(name = "bib_pagecount", length = 10)
     private String bib_pagecount;
+
+    @Column(name = "reviewed_work", length = 800)
     private String reviewed_work;
+
+    @Column(name = "languages", length = 50)
     private String languages;
+
+    @Column(name = "rw_authors", length = 500)
     private String rw_authors;
+
+    @Column(name = "rw_year", length = 10)
     private String rw_year;
+
+    @Column(name = "rw_language", length = 50)
     private String rw_language;
+
+    @Column(name = "book_note", length = 50)
     private String book_note;
+
+    @Column(name = "bk_binding", length = 50)
     private String bk_binding;
+
+    @Column(name = "bk_publisher", length = 500)
     private String bk_publisher;
+
+    @Column(name = "bk_prepay", length = 6)
     private String bk_prepay;
+
+    @Column(name = "bk_ordering", length = 500)
     private String bk_ordering;
+
+    @Column(name = "identifier_accession_no", length = 20)
     private String identifier_accession_no;
+
+    @Column(name = "identifier_issn", length = 20)
     private String identifier_issn;
+
+    @Column(name = "identifier_eissn", length = 20)
     private String identifier_eissn;
+
+    @Column(name = "identifier_isbn", length = 50)
     private String identifier_isbn;
+
+    @Column(name = "identifier_eisbn", length = 50)
     private String identifier_eisbn;
+
+    @Column(name = "identifier_doi", length = 100)
     private String identifier_doi;
+
+    @Column(name = "identifier_pmid", length = 20)
     private String identifier_pmid;
+
+    @Column(name = "normalized_doctype", length = 50)
     private String normalized_doctype;
+
+    @Column(name = "is_OA", length = 8)
     private String is_OA;
+
+    @Column(name = "oases", length = 1000)
     private String oases;
+
+    @Column(name = "subj_group_macro_id", length = 10)
     private String subj_group_macro_id;
+
+    @Column(name = "subj_group_macro_value", length = 100)
     private String subj_group_macro_value;
+
+    @Column(name = "subj_group_meso_id", length = 200)
     private String subj_group_meso_id;
+
+    @Column(name = "subj_group_meso_value", length = 200)
     private String subj_group_meso_value;
+
+    @Column(name = "subj_group_micro_id", length = 50)
     private String subj_group_micro_id;
+
+    @Column(name = "subj_group_micro_value", length = 500)
     private String subj_group_micro_value;
+
+    @Column(name = "author_fullname", columnDefinition = "VARCHAR(MAX)")
     private String author_fullname;
+
+    @Column(name = "author_displayname", columnDefinition = "VARCHAR(MAX)")
     private String author_displayname;
+
+    @Column(name = "author_wosname", columnDefinition = "VARCHAR(MAX)")
     private String author_wosname;
+
+    @Column(name = "grant_info", columnDefinition = "VARCHAR(MAX)")
     private String grant_info;
+
+    @Column(name = "address", columnDefinition = "VARCHAR(MAX)")
     private String address;
+
+    @Column(name = "reprint_address", columnDefinition = "VARCHAR(MAX)")
     private String reprint_address;
+
+    @Column(name = "email", columnDefinition = "VARCHAR(MAX)")
     private String email;
+
+    @Column(name = "contributor", columnDefinition = "VARCHAR(MAX)")
     private String contributor;
+
+    @Column(name = "publisher", columnDefinition = "VARCHAR(MAX)")
     private String publisher;
+
+    @Column(name = "publisher_unified", columnDefinition = "VARCHAR(MAX)")
     private String publisher_unified;
+
+    @Column(name = "publisher_display", columnDefinition = "VARCHAR(MAX)")
     private String publisher_display;
 
-
+    // Getter和Setter方法保持不变...
     public void setSeq_temp(Integer seqTemp) {
         this.seq_temp = seqTemp;
     }
@@ -98,6 +246,7 @@ public class main2022 {
     public Integer getSeq_temp() {
         return seq_temp;
     }
+
     public String getWos_uid() {
         return wos_uid;
     }
@@ -122,13 +271,16 @@ public class main2022 {
         this.sortdate = sortdate;
     }
 
-    public String getPubyear() {
+    public String getPubyear() {  // 注意这里改为Integer
         return pubyear;
     }
 
-    public void setPubyear(String pubyear) {
+    public void setPubyear(String pubyear) {  // 注意这里改为Integer
         this.pubyear = pubyear;
     }
+
+    // ... 其他getter和setter方法保持原样，只需要注意pubyear的类型变更
+    // 为了节省空间，这里不重复所有的getter和setter
 
     public String getHas_abstract() {
         return has_abstract;

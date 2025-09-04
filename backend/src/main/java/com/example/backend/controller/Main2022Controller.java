@@ -6,7 +6,12 @@ import com.example.backend.model.main2022;
 import com.example.backend.service.DisciplinaryAnalysis;
 import com.example.backend.service.Main2022Service;
 import com.example.backend.service.Main2022ElasticSearchService;
+import com.example.backend.service.impl.Main2022ElasticSearchServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +31,9 @@ public class Main2022Controller {
     private final Main2022Service main2022Service;
     private final Main2022ElasticSearchService main2022ElasticSearchService;
     private final DisciplinaryAnalysis disciplinaryAnalysis;
+
+    @Autowired
+    private ElasticsearchOperations elasticsearchOperations;
 
     @Autowired
     public Main2022Controller(Main2022Service main2022Service,
@@ -111,5 +119,75 @@ public class Main2022Controller {
             errorResponse.put("error", "分析过程中发生错误: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
+    }
+
+    /**
+     * 调试Elasticsearch连接的方法
+     */
+    @GetMapping("/debug-es")
+    public ResponseEntity<Map<String, Object>> debugElasticsearch() {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            // 检查索引是否存在
+            boolean indexExists = elasticsearchOperations.indexOps(main2022.class).exists();
+            result.put("indexExists", indexExists);
+
+            if (indexExists) {
+                // 获取总文档数
+                long totalCount = elasticsearchOperations.count(Query.findAll(), main2022.class);
+                result.put("totalDocuments", totalCount);
+
+                // 调用调试方法
+                ((Main2022ElasticSearchServiceImpl) main2022ElasticSearchService).debugElasticsearchConnection();
+
+                result.put("message", "调试信息已输出到控制台，索引存在，文档数量: " + totalCount);
+                result.put("status", "SUCCESS");
+            } else {
+                result.put("message", "索引不存在，需要先同步数据");
+                result.put("status", "INDEX_NOT_EXISTS");
+            }
+
+        } catch (Exception e) {
+            result.put("status", "ERROR");
+            result.put("error", e.getMessage());
+            e.printStackTrace();
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 快速检查Elasticsearch状态
+     */
+    @GetMapping("/es-status")
+    public ResponseEntity<Map<String, Object>> checkElasticsearchStatus() {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            boolean indexExists = elasticsearchOperations.indexOps(main2022.class).exists();
+            result.put("indexExists", indexExists);
+
+            if (indexExists) {
+                NativeQuery countQuery = new NativeQueryBuilder().build();
+                long totalCount = elasticsearchOperations.count(countQuery, main2022.class);
+                result.put("totalDocuments", totalCount);
+                result.put("status", totalCount > 0 ? "READY" : "EMPTY");
+                result.put("message", totalCount > 0 ?
+                        "Elasticsearch准备就绪，包含" + totalCount + "条文档" :
+                        "索引存在但为空，需要同步数据");
+            } else {
+                result.put("status", "NO_INDEX");
+                result.put("message", "索引不存在，需要创建并同步数据");
+                result.put("totalDocuments", 0);
+            }
+
+        } catch (Exception e) {
+            result.put("status", "ERROR");
+            result.put("error", e.getMessage());
+            result.put("message", "无法连接到Elasticsearch: " + e.getMessage());
+        }
+
+        return ResponseEntity.ok(result);
     }
 }

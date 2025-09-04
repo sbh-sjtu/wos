@@ -2,23 +2,17 @@ package com.example.backend.service.impl;
 
 import com.example.backend.model.main2022;
 import com.example.backend.service.Main2022ElasticSearchService;
-import org.elasticsearch.common.lucene.search.function.CombineFunction;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.MultiMatchQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.RangeQueryBuilder;
-import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
-import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.WildcardQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
+import co.elastic.clients.json.JsonData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.elasticsearch.core.ElasticsearchAggregations;
-import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -31,11 +25,11 @@ import java.util.stream.Collectors;
 public class Main2022ElasticSearchServiceImpl implements Main2022ElasticSearchService {
 
     @Autowired
-    private final ElasticsearchRestTemplate elasticsearchRestTemplate;
+    private final ElasticsearchOperations elasticsearchOperations;
     private final NLPService nlpService;
 
-    public Main2022ElasticSearchServiceImpl(ElasticsearchRestTemplate elasticsearchRestTemplate, NLPService nlpService) {
-        this.elasticsearchRestTemplate = elasticsearchRestTemplate;
+    public Main2022ElasticSearchServiceImpl(ElasticsearchOperations elasticsearchOperations, NLPService nlpService) {
+        this.elasticsearchOperations = elasticsearchOperations;
         this.nlpService = nlpService;
     }
 
@@ -56,394 +50,301 @@ public class Main2022ElasticSearchServiceImpl implements Main2022ElasticSearchSe
             System.out.println("token: " + token);
         }
 
-        // 构建布尔查询
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        try {
+            // 构建布尔查询
+            BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
 
-        // 遍历所有 token，对每个 token 构建一个 multi_match 查询
-        for (String token : tokens) {
-            if (isValidDate(token, "yyyy-MM-dd")) {
-                MultiMatchQueryBuilder multiMatchQuery = QueryBuilders.multiMatchQuery(token, "sortdate");
-                boolQueryBuilder.should(multiMatchQuery);
-            } else {
-                MultiMatchQueryBuilder multiMatchQuery = QueryBuilders.multiMatchQuery(token).
-                        field("*");
-                boolQueryBuilder.should(multiMatchQuery);
+            // 遍历所有 token，对每个 token 构建查询
+            for (String token : tokens) {
+                if (isValidDate(token, "yyyy-MM-dd")) {
+                    boolQueryBuilder.should(MatchQuery.of(m -> m
+                            .field("sortdate")
+                            .query(token)
+                    )._toQuery());
+                } else {
+                    boolQueryBuilder.should(WildcardQuery.of(w -> w
+                            .field("keyword")
+                            .value("*" + token.toLowerCase() + "*")
+                    )._toQuery());
+                    boolQueryBuilder.should(WildcardQuery.of(w -> w
+                            .field("article_title")
+                            .value("*" + token.toLowerCase() + "*")
+                    )._toQuery());
+                }
             }
+
+            // 创建查询
+            NativeQuery searchQuery = new NativeQueryBuilder()
+                    .withQuery(boolQueryBuilder.build()._toQuery())
+                    .withPageable(PageRequest.of(0, 50))
+                    .build();
+
+            // 执行查询
+            SearchHits<main2022> searchHits = elasticsearchOperations.search(searchQuery, main2022.class);
+            return searchHits.stream()
+                    .map(hit -> hit.getContent())
+                    .distinct()
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            System.err.println("全文搜索失败: " + e.getMessage());
+            e.printStackTrace();
+            return Collections.emptyList();
         }
-
-        // 使用 function_score 来基于匹配的关键词数量进行评分
-        FunctionScoreQueryBuilder functionScoreQuery = QueryBuilders.functionScoreQuery(
-                boolQueryBuilder,
-                ScoreFunctionBuilders.weightFactorFunction(1.0f)
-        ).boostMode(CombineFunction.SUM);
-
-        // 创建 ElasticSearch 查询
-        NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
-                .withQuery(functionScoreQuery)
-                .withMinScore(1.0f)
-                .withPageable(PageRequest.of(0, 50))
-                .build();
-
-        // 执行查询
-        SearchHits<main2022> searchHits = elasticsearchRestTemplate.search(searchQuery, main2022.class);
-        return searchHits.stream()
-                .map(hit -> hit.getContent())
-                .distinct()
-                .collect(Collectors.toList());
     }
 
     @Override
     public Map<String, List<main2022>> searchByKeywordAndDateRange(String keyword, String startDate, String endDate) {
         System.out.println("开始执行搜索 - 关键词: " + keyword + ", 开始年份: " + startDate + ", 结束年份: " + endDate);
 
-        // 构建更复杂的查询，支持多字段搜索
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-
-        // 关键词搜索 - 在多个字段中搜索
-        BoolQueryBuilder keywordQuery = QueryBuilders.boolQuery();
-        keywordQuery.should(QueryBuilders.matchQuery("subject_extended", keyword).boost(3.0f));
-        keywordQuery.should(QueryBuilders.matchQuery("article_title", keyword).boost(2.5f));
-        keywordQuery.should(QueryBuilders.matchQuery("abstract_text", keyword).boost(2.0f));
-        keywordQuery.should(QueryBuilders.matchQuery("keyword", keyword).boost(2.5f));
-        keywordQuery.should(QueryBuilders.matchQuery("keyword_plus", keyword).boost(2.0f));
-        keywordQuery.should(QueryBuilders.matchQuery("subject_traditional", keyword).boost(1.5f));
-        keywordQuery.minimumShouldMatch(1);
-
-        boolQueryBuilder.must(keywordQuery);
-
-        // 修复时间段过滤 - 使用新的API
-        RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("pubyear")
-                .gte(startDate)  // 使用 gte 替代 from
-                .lte(endDate);   // 使用 lte 替代 to
-        boolQueryBuilder.filter(rangeQuery);
-
-        System.out.println("构建的查询: " + boolQueryBuilder.toString());
-
-        // 按年份分类的聚合
-        TermsAggregationBuilder aggregation = AggregationBuilders.terms("by_year")
-                .field("pubyear.keyword")
-                .size(100);
-
-        // 创建 ElasticSearch 查询
-        NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
-                .withQuery(boolQueryBuilder)
-                .addAggregation(aggregation)
-                .withPageable(PageRequest.of(0, 10000)) // 增加返回结果数量
-                .build();
-
         try {
+            // 首先测试基本连接
+            if (!elasticsearchOperations.indexOps(main2022.class).exists()) {
+                System.err.println("索引 'main' 不存在");
+                return new TreeMap<>();
+            }
+
+            // 构建查询
+            BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+
+            // 关键词搜索
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                BoolQuery.Builder keywordQueryBuilder = new BoolQuery.Builder();
+
+                // 使用wildcard查询
+                keywordQueryBuilder.should(WildcardQuery.of(w -> w
+                        .field("subject_extended")
+                        .value("*" + keyword.toLowerCase() + "*")
+                        .boost(3.0f)
+                )._toQuery());
+
+                keywordQueryBuilder.should(WildcardQuery.of(w -> w
+                        .field("article_title")
+                        .value("*" + keyword.toLowerCase() + "*")
+                        .boost(2.5f)
+                )._toQuery());
+
+                keywordQueryBuilder.should(WildcardQuery.of(w -> w
+                        .field("abstract_text")
+                        .value("*" + keyword.toLowerCase() + "*")
+                        .boost(2.0f)
+                )._toQuery());
+
+                keywordQueryBuilder.should(WildcardQuery.of(w -> w
+                        .field("keyword")
+                        .value("*" + keyword.toLowerCase() + "*")
+                        .boost(2.5f)
+                )._toQuery());
+
+                keywordQueryBuilder.should(WildcardQuery.of(w -> w
+                        .field("keyword_plus")
+                        .value("*" + keyword.toLowerCase() + "*")
+                        .boost(2.0f)
+                )._toQuery());
+
+                // 添加匹配查询作为备选
+                keywordQueryBuilder.should(MatchQuery.of(m -> m
+                        .field("subject_extended")
+                        .query(keyword)
+                        .boost(2.0f)
+                )._toQuery());
+
+                keywordQueryBuilder.should(MatchQuery.of(m -> m
+                        .field("article_title")
+                        .query(keyword)
+                        .boost(1.5f)
+                )._toQuery());
+
+                keywordQueryBuilder.minimumShouldMatch("1");
+                boolQueryBuilder.must(keywordQueryBuilder.build()._toQuery());
+            }
+
+            // 时间范围过滤
+            if (startDate != null && endDate != null) {
+                boolQueryBuilder.filter(RangeQuery.of(r -> r
+                        .field("pubyear")
+                        .gte(JsonData.of(startDate))
+                        .lte(JsonData.of(endDate))
+                )._toQuery());
+            }
+
+            System.out.println("构建的查询完成");
+
+            // 先执行一个测试查询
+            NativeQuery testQuery = new NativeQueryBuilder()
+                    .withPageable(PageRequest.of(0, 5))
+                    .build();
+
+            SearchHits<main2022> testHits = elasticsearchOperations.search(testQuery, main2022.class);
+            System.out.println("测试查询返回记录数: " + testHits.getTotalHits());
+
+            if (testHits.getTotalHits() == 0) {
+                System.err.println("警告：索引中没有任何数据");
+                return new TreeMap<>();
+            }
+
+            // 打印一些样本数据用于调试
+            testHits.stream().limit(2).forEach(hit -> {
+                main2022 sample = hit.getContent();
+                System.out.println("样本数据 - pubyear: " + sample.getPubyear() +
+                        ", keyword: " + (sample.getKeyword() != null ? sample.getKeyword().substring(0, Math.min(50, sample.getKeyword().length())) : "null") +
+                        ", title: " + (sample.getArticle_title() != null ? sample.getArticle_title().substring(0, Math.min(50, sample.getArticle_title().length())) : "null"));
+            });
+
+            // 创建主查询
+            NativeQuery searchQuery = new NativeQueryBuilder()
+                    .withQuery(boolQueryBuilder.build()._toQuery())
+                    .withPageable(PageRequest.of(0, 1000))
+                    .build();
+
             // 执行查询
-            SearchHits<main2022> searchHits = elasticsearchRestTemplate.search(searchQuery, main2022.class);
+            SearchHits<main2022> searchHits = elasticsearchOperations.search(searchQuery, main2022.class);
             List<main2022> allPapers = searchHits.stream()
                     .map(hit -> hit.getContent())
                     .collect(Collectors.toList());
 
-            System.out.println("查询到的论文总数: " + allPapers.size());
+            System.out.println("主查询返回的论文总数: " + allPapers.size());
 
-            // 获取聚合结果
-            ElasticsearchAggregations elasticsearchAggregations = (ElasticsearchAggregations) searchHits.getAggregations();
+            if (allPapers.isEmpty()) {
+                // 如果主查询没有结果，尝试更宽松的查询
+                System.out.println("主查询无结果，尝试更宽松的查询...");
 
-            if (elasticsearchAggregations != null) {
-                Terms yearTerms = elasticsearchAggregations.aggregations().get("by_year");
+                BoolQuery.Builder relaxedQuery = new BoolQuery.Builder();
 
-                // 使用聚合结果创建年份分组
-                Map<String, List<main2022>> result = new TreeMap<>(); // TreeMap保持年份排序
+                // 只使用关键词查询，不限制时间
+                if (keyword != null && !keyword.trim().isEmpty()) {
+                    relaxedQuery.should(WildcardQuery.of(w -> w
+                            .field("article_title")
+                            .value("*" + keyword.toLowerCase() + "*")
+                    )._toQuery());
 
-                for (Terms.Bucket bucket : yearTerms.getBuckets()) {
-                    String year = bucket.getKeyAsString();
-                    List<main2022> yearPapers = allPapers.stream()
-                            .filter(paper -> year.equals(paper.getPubyear()))
-                            .collect(Collectors.toList());
+                    relaxedQuery.should(WildcardQuery.of(w -> w
+                            .field("keyword")
+                            .value("*" + keyword.toLowerCase() + "*")
+                    )._toQuery());
 
-                    if (!yearPapers.isEmpty()) {
-                        result.put(year, yearPapers);
-                        System.out.println("年份 " + year + " 找到论文数: " + yearPapers.size());
-                    }
+                    relaxedQuery.should(MatchQuery.of(m -> m
+                            .field("article_title")
+                            .query(keyword)
+                    )._toQuery());
+
+                    relaxedQuery.should(MatchQuery.of(m -> m
+                            .field("keyword")
+                            .query(keyword)
+                    )._toQuery());
+
+                    relaxedQuery.minimumShouldMatch("1");
                 }
 
-                System.out.println("最终结果按年份分组: " + result.keySet());
-                return result;
-            } else {
-                System.out.println("没有聚合结果，手动按年份分组");
-                // 如果没有聚合结果，手动按年份分组
-                Map<String, List<main2022>> result = allPapers.stream()
-                        .collect(Collectors.groupingBy(
-                                paper -> paper.getPubyear() != null ? paper.getPubyear() : "Unknown",
-                                TreeMap::new,
-                                Collectors.toList()
-                        ));
+                NativeQuery relaxedSearchQuery = new NativeQueryBuilder()
+                        .withQuery(relaxedQuery.build()._toQuery())
+                        .withPageable(PageRequest.of(0, 100))
+                        .build();
 
-                System.out.println("手动分组结果: " + result.keySet());
-                return result;
+                SearchHits<main2022> relaxedHits = elasticsearchOperations.search(relaxedSearchQuery, main2022.class);
+                List<main2022> relaxedPapers = relaxedHits.stream()
+                        .map(hit -> hit.getContent())
+                        .collect(Collectors.toList());
+
+                System.out.println("宽松查询返回的论文数: " + relaxedPapers.size());
+
+                if (!relaxedPapers.isEmpty()) {
+                    // 手动过滤年份范围
+                    if (startDate != null && endDate != null) {
+                        relaxedPapers = relaxedPapers.stream()
+                                .filter(paper -> {
+                                    String pubyear = paper.getPubyear();
+                                    if (pubyear != null && pubyear.matches("\\d{4}")) {
+                                        int year = Integer.parseInt(pubyear);
+                                        int start = Integer.parseInt(startDate);
+                                        int end = Integer.parseInt(endDate);
+                                        return year >= start && year <= end;
+                                    }
+                                    return false;
+                                })
+                                .collect(Collectors.toList());
+                    }
+
+                    allPapers = relaxedPapers;
+                    System.out.println("过滤后的论文数: " + allPapers.size());
+                }
             }
+
+            // 手动按年份分组
+            Map<String, List<main2022>> result = allPapers.stream()
+                    .filter(paper -> paper.getPubyear() != null && !paper.getPubyear().trim().isEmpty())
+                    .collect(Collectors.groupingBy(
+                            paper -> paper.getPubyear(),
+                            TreeMap::new,
+                            Collectors.toList()
+                    ));
+
+            System.out.println("最终结果按年份分组: " + result.keySet());
+            System.out.println("各年份论文数量: ");
+            result.forEach((year, papers) -> {
+                System.out.println("  " + year + ": " + papers.size() + " 篇");
+            });
+
+            return result;
+
         } catch (Exception e) {
             System.err.println("Elasticsearch 查询失败: " + e.getMessage());
             e.printStackTrace();
+
             return new TreeMap<>();
         }
     }
 
     /**
-     * 增强的搜索方法，支持更多搜索选项
+     * 调试方法：检查Elasticsearch连接和数据
      */
-    public Map<String, List<main2022>> advancedDisciplinarySearch(String keyword,
-                                                                  String startDate,
-                                                                  String endDate,
-                                                                  List<String> countries,
-                                                                  List<String> journals,
-                                                                  String documentType) {
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+    public void debugElasticsearchConnection() {
+        try {
+            System.out.println("=== Elasticsearch调试信息 ===");
 
-        // 关键词搜索
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            BoolQueryBuilder keywordQuery = QueryBuilders.boolQuery();
-            keywordQuery.should(QueryBuilders.matchQuery("subject_extended", keyword).boost(3.0f));
-            keywordQuery.should(QueryBuilders.matchQuery("article_title", keyword).boost(2.5f));
-            keywordQuery.should(QueryBuilders.matchQuery("abstract_text", keyword).boost(2.0f));
-            keywordQuery.should(QueryBuilders.matchQuery("keyword", keyword).boost(2.5f));
-            keywordQuery.minimumShouldMatch(1);
-            boolQueryBuilder.must(keywordQuery);
-        }
+            // 检查索引是否存在
+            boolean indexExists = elasticsearchOperations.indexOps(main2022.class).exists();
+            System.out.println("索引是否存在: " + indexExists);
 
-        // 修复时间范围过滤
-        if (startDate != null && endDate != null) {
-            RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("pubyear")
-                    .gte(startDate)
-                    .lte(endDate);
-            boolQueryBuilder.filter(rangeQuery);
-        }
+            if (indexExists) {
+                // 获取总文档数
+                NativeQuery countQuery = new NativeQueryBuilder().build();
+                long totalCount = elasticsearchOperations.count(countQuery, main2022.class);
+                System.out.println("总文档数: " + totalCount);
 
-        // 国家过滤
-        if (countries != null && !countries.isEmpty()) {
-            BoolQueryBuilder countryQuery = QueryBuilders.boolQuery();
-            for (String country : countries) {
-                countryQuery.should(QueryBuilders.wildcardQuery("reprint_address", "*" + country + "*"));
-            }
-            boolQueryBuilder.filter(countryQuery);
-        }
+                if (totalCount > 0) {
+                    // 获取样本数据
+                    NativeQuery sampleQuery = new NativeQueryBuilder()
+                            .withPageable(PageRequest.of(0, 3))
+                            .build();
 
-        // 期刊过滤
-        if (journals != null && !journals.isEmpty()) {
-            boolQueryBuilder.filter(QueryBuilders.termsQuery("journal_title_source.keyword", journals));
-        }
+                    SearchHits<main2022> sampleHits = elasticsearchOperations.search(sampleQuery, main2022.class);
+                    System.out.println("样本数据:");
+                    sampleHits.forEach(hit -> {
+                        main2022 doc = hit.getContent();
+                        System.out.println("  pubyear: '" + doc.getPubyear() + "'");
+                        System.out.println("  keyword前50字符: '" +
+                                (doc.getKeyword() != null ? doc.getKeyword().substring(0, Math.min(50, doc.getKeyword().length())) : "null") + "'");
+                    });
 
-        // 文档类型过滤
-        if (documentType != null && !documentType.trim().isEmpty()) {
-            boolQueryBuilder.filter(QueryBuilders.matchQuery("article_doctype", documentType));
-        }
+                    // 检查特定年份的数据
+                    NativeQuery yearQuery = new NativeQueryBuilder()
+                            .withQuery(RangeQuery.of(r -> r
+                                    .field("pubyear")
+                                    .gte(JsonData.of("2020"))
+                                    .lte(JsonData.of("2024"))
+                            )._toQuery())
+                            .build();
 
-        // 按年份分类的聚合
-        TermsAggregationBuilder aggregation = AggregationBuilders.terms("by_year")
-                .field("pubyear.keyword")
-                .size(100);
-
-        // 创建查询
-        NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
-                .withQuery(boolQueryBuilder)
-                .addAggregation(aggregation)
-                .withPageable(PageRequest.of(0, 10000))
-                .build();
-
-        // 执行查询
-        SearchHits<main2022> searchHits = elasticsearchRestTemplate.search(searchQuery, main2022.class);
-        List<main2022> allPapers = searchHits.stream()
-                .map(hit -> hit.getContent())
-                .collect(Collectors.toList());
-
-        // 按年份分组返回结果
-        return allPapers.stream()
-                .collect(Collectors.groupingBy(
-                        paper -> paper.getPubyear() != null ? paper.getPubyear() : "Unknown",
-                        TreeMap::new,
-                        Collectors.toList()
-                ));
-    }
-
-    /**
-     * 获取热门研究主题
-     */
-    public Map<String, Long> getTopResearchTopics(String startDate, String endDate, int topN) {
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-
-        if (startDate != null && endDate != null) {
-            RangeQueryBuilder rangeQuery = QueryBuilders.rangeQuery("pubyear")
-                    .gte(startDate)
-                    .lte(endDate);
-            boolQueryBuilder.filter(rangeQuery);
-        }
-
-        // 按研究领域聚合
-        TermsAggregationBuilder topicAggregation = AggregationBuilders.terms("top_topics")
-                .field("subject_extended.keyword")
-                .size(topN);
-
-        NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
-                .withQuery(boolQueryBuilder)
-                .addAggregation(topicAggregation)
-                .withPageable(PageRequest.of(0, 0)) // 只需要聚合结果
-                .build();
-
-        SearchHits<main2022> searchHits = elasticsearchRestTemplate.search(searchQuery, main2022.class);
-        ElasticsearchAggregations aggregations = (ElasticsearchAggregations) searchHits.getAggregations();
-
-        if (aggregations != null) {
-            Terms topicTerms = aggregations.aggregations().get("top_topics");
-            return topicTerms.getBuckets().stream()
-                    .collect(Collectors.toMap(
-                            Terms.Bucket::getKeyAsString,
-                            Terms.Bucket::getDocCount,
-                            (e1, e2) -> e1,
-                            LinkedHashMap::new
-                    ));
-        }
-
-        return new LinkedHashMap<>();
-    }
-
-    /**
-     * 获取合作网络数据
-     */
-    public Map<String, Object> getCollaborationNetwork(String keyword, String startDate, String endDate) {
-        Map<String, List<main2022>> data = searchByKeywordAndDateRange(keyword, startDate, endDate);
-
-        // 分析国家间合作
-        Map<String, Set<String>> countryCollaborations = new HashMap<>();
-        Map<String, Integer> institutionCounts = new HashMap<>();
-
-        for (List<main2022> papers : data.values()) {
-            for (main2022 paper : papers) {
-                if (paper.getAddress() != null) {
-                    String[] addresses = paper.getAddress().split(";");
-                    Set<String> paperCountries = new HashSet<>();
-
-                    for (String address : addresses) {
-                        String country = extractCountryFromAddress(address.trim());
-                        if (country != null && !country.isEmpty()) {
-                            paperCountries.add(country);
-                        }
-
-                        // 提取机构
-                        String institution = extractInstitutionFromAddress(address.trim());
-                        if (institution != null && !institution.isEmpty()) {
-                            institutionCounts.merge(institution, 1, Integer::sum);
-                        }
-                    }
-
-                    // 记录国家间合作
-                    for (String country1 : paperCountries) {
-                        for (String country2 : paperCountries) {
-                            if (!country1.equals(country2)) {
-                                countryCollaborations
-                                        .computeIfAbsent(country1, k -> new HashSet<>())
-                                        .add(country2);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("countryCollaborations", countryCollaborations);
-        result.put("topInstitutions", institutionCounts.entrySet().stream()
-                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                .limit(20)
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (e1, e2) -> e1,
-                        LinkedHashMap::new
-                )));
-
-        return result;
-    }
-
-    /**
-     * 从地址中提取国家信息的辅助方法
-     */
-    private String extractCountryFromAddress(String address) {
-        if (address == null || address.trim().isEmpty()) {
-            return null;
-        }
-
-        // 常见国家名称映射
-        Map<String, String> countryMappings = new HashMap<>();
-        countryMappings.put("USA", "United States");
-        countryMappings.put("US", "United States");
-        countryMappings.put("UNITED STATES", "United States");
-        countryMappings.put("UK", "United Kingdom");
-        countryMappings.put("ENGLAND", "United Kingdom");
-        countryMappings.put("CHINA", "China");
-        countryMappings.put("PEOPLES R CHINA", "China");
-        countryMappings.put("GERMANY", "Germany");
-        countryMappings.put("JAPAN", "Japan");
-        countryMappings.put("FRANCE", "France");
-        countryMappings.put("CANADA", "Canada");
-        countryMappings.put("AUSTRALIA", "Australia");
-        countryMappings.put("ITALY", "Italy");
-        countryMappings.put("SPAIN", "Spain");
-        countryMappings.put("NETHERLANDS", "Netherlands");
-        countryMappings.put("SWITZERLAND", "Switzerland");
-        countryMappings.put("SWEDEN", "Sweden");
-        countryMappings.put("NORWAY", "Norway");
-        countryMappings.put("DENMARK", "Denmark");
-        countryMappings.put("FINLAND", "Finland");
-        countryMappings.put("BELGIUM", "Belgium");
-        countryMappings.put("AUSTRIA", "Austria");
-        countryMappings.put("SOUTH KOREA", "South Korea");
-        countryMappings.put("KOREA", "South Korea");
-        countryMappings.put("INDIA", "India");
-        countryMappings.put("BRAZIL", "Brazil");
-        countryMappings.put("RUSSIA", "Russia");
-        countryMappings.put("ISRAEL", "Israel");
-        countryMappings.put("SINGAPORE", "Singapore");
-
-        String[] parts = address.split("[,;]");
-        if (parts.length > 0) {
-            String lastPart = parts[parts.length - 1].trim().toUpperCase();
-
-            for (Map.Entry<String, String> entry : countryMappings.entrySet()) {
-                if (lastPart.contains(entry.getKey())) {
-                    return entry.getValue();
+                    long yearCount = elasticsearchOperations.count(yearQuery, main2022.class);
+                    System.out.println("2020-2024年份范围内的文档数: " + yearCount);
                 }
             }
 
-            return cleanCountryName(lastPart);
+        } catch (Exception e) {
+            System.err.println("调试过程中出错: " + e.getMessage());
+            e.printStackTrace();
         }
-
-        return null;
-    }
-
-    /**
-     * 清理国家名称
-     */
-    private String cleanCountryName(String countryName) {
-        if (countryName == null) return null;
-
-        countryName = countryName.replaceAll("\\d+", "").trim();
-        countryName = countryName.replaceAll("[^a-zA-Z\\s]", "").trim();
-
-        return countryName.length() > 2 ? countryName : null;
-    }
-
-    /**
-     * 从地址中提取机构信息
-     */
-    private String extractInstitutionFromAddress(String address) {
-        if (address == null) return null;
-
-        String[] parts = address.split("[,;]");
-        for (String part : parts) {
-            String trimmed = part.trim();
-            if (trimmed.toLowerCase().contains("univ") ||
-                    trimmed.toLowerCase().contains("institute") ||
-                    trimmed.toLowerCase().contains("college") ||
-                    trimmed.toLowerCase().contains("hospital") ||
-                    trimmed.toLowerCase().contains("school")) {
-                return trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed;
-            }
-        }
-        return null;
     }
 
     private boolean isValidDate(String dateStr, String format) {

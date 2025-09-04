@@ -153,12 +153,19 @@
 }
 
 /* 分页容器 */
-.pagination-container {
+.pagination-container_bottom {
   display: flex;
   justify-content: center;
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid #f0f0f0;
+}
+.pagination-container_top {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 /* 无结果状态 */

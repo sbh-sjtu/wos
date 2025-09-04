@@ -78,7 +78,7 @@ function DetailCard({ paperInfo }) {
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">作者机构：</Text>
-                                <Text>{authorInfo.institution}</Text>
+                                <Text>{authorInfo.address}</Text>
                             </div>
                             <div className="info-item">
                                 <Text strong className="info-label">国家/地区：</Text>
@@ -202,18 +202,10 @@ function DetailCard({ paperInfo }) {
                             className="info-card"
                         >
                             <div className="info-item">
-                                <Text strong className="info-label">被引次数：</Text>
-                                <Text className="metric-value">{paperInfo.citation_count || 0}</Text>
-                            </div>
-                            <div className="info-item">
-                                <Text strong className="info-label">下载次数：</Text>
-                                <Text className="metric-value">{paperInfo.download_count || 0}</Text>
-                            </div>
-                            <div className="info-item">
                                 <Text strong className="info-label">页码范围：</Text>
                                 <Text>
-                                    {paperInfo.page_start && paperInfo.page_end
-                                        ? `${paperInfo.page_start}-${paperInfo.page_end}`
+                                    {paperInfo.page_begin && paperInfo.page_end
+                                        ? `${paperInfo.page_begin}-${paperInfo.page_end}`
                                         : paperInfo.pages || "暂无页码信息"
                                     }
                                 </Text>
@@ -300,24 +292,24 @@ function DetailCard({ paperInfo }) {
                         <Col xs={24} sm={8}>
                             <div className="info-item">
                                 <Text strong className="info-label">WOS标识：</Text>
-                                <Text copyable={{ text: paperInfo.wos_id }}>
-                                    {paperInfo.wos_id || paperInfo.accession_number || "暂无"}
+                                <Text copyable={{ text: paperInfo.wos_uid }}>
+                                    {paperInfo.wos_uid || "暂无"}
                                 </Text>
                             </div>
                         </Col>
                         <Col xs={24} sm={8}>
                             <div className="info-item">
                                 <Text strong className="info-label">PubMed ID：</Text>
-                                <Text copyable={{ text: paperInfo.pmid }}>
-                                    {paperInfo.pmid || paperInfo.pubmed_id || "暂无"}
+                                <Text copyable={{ text: paperInfo.identifier_pmid }}>
+                                    {paperInfo.identifier_pmid || paperInfo.identifier_pmid || "暂无"}
                                 </Text>
                             </div>
                         </Col>
                         <Col xs={24} sm={8}>
                             <div className="info-item">
-                                <Text strong className="info-label">ISBN/其他：</Text>
+                                <Text strong className="info-label">ISBN/EISBN：</Text>
                                 <Text>
-                                    {paperInfo.isbn || paperInfo.other_identifier || "暂无"}
+                                    {paperInfo.identifier_isbn || paperInfo.identifier_eisbn || "暂无"}
                                 </Text>
                             </div>
                         </Col>

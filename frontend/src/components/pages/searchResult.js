@@ -329,6 +329,19 @@ function SearchResult() {
 
                         <Content className="result-main-content">
                             <Spin spinning={loading}>
+                                {paperInfo.length > 0 && (
+                                    <div className="pagination-container_top">
+                                        <Pagination
+                                            current={currentPage}
+                                            pageSize={pageSize}
+                                            total={paperInfo.length}
+                                            onChange={onPageChange}
+                                            showTotal={total => `共 ${total} 条记录`}
+                                            showQuickJumper
+                                            showSizeChanger={false}
+                                        />
+                                    </div>
+                                )}
                                 {paperInfo.length > 0 ? (
                                     <div className="paper-cards-container">
                                         {currentPapers.map((paper, index) => (
@@ -350,7 +363,7 @@ function SearchResult() {
                                 )}
 
                                 {paperInfo.length > 0 && (
-                                    <div className="pagination-container">
+                                    <div className="pagination-container_bottom">
                                         <Pagination
                                             current={currentPage}
                                             pageSize={pageSize}

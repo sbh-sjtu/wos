@@ -3,6 +3,7 @@ import { Layout, Input, DatePicker, Space, Button, message, Spin, Card, Row, Col
 import { SearchOutlined, CalendarOutlined, BarChartOutlined } from '@ant-design/icons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import axios from 'axios';
+import Header from '../header';
 
 const { RangePicker } = DatePicker;
 const { Content } = Layout;
@@ -172,6 +173,7 @@ function DisciplinaryAnalysis() {
 
     return (
         <Layout className='disciplinary-layout' style={{ minHeight: '100vh' }}>
+            <Header />
             <Content>
                 <div style={{
                     backgroundColor: '#b82e28',

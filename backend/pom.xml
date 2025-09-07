@@ -33,10 +33,12 @@
 		<elasticsearch.version>8.11.0</elasticsearch.version>
 	</properties>
 	<dependencies>
-		<dependency>
+		<!-- 删除了未使用的JPA依赖 -->
+		<!-- <dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
+		</dependency> -->
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
@@ -53,47 +55,43 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
 		<!--swagger ui-->
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>2.0.2</version>
 		</dependency>
+
 		<dependency>
 			<groupId>com.microsoft.sqlserver</groupId>
 			<artifactId>mssql-jdbc</artifactId>
 			<version>9.4.0.jre8</version>
 		</dependency>
+
 		<dependency>
 			<groupId>org.mybatis.spring.boot</groupId>
 			<artifactId>mybatis-spring-boot-starter</artifactId>
 			<version>3.0.3</version>
 		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
 			<optional>true</optional>
 		</dependency>
+
 		<dependency>
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>
 			<version>8.0.33</version>
 		</dependency>
 
-		<!-- 更新为兼容ES 8.x的Spring Data Elasticsearch -->
+		<!-- Elasticsearch -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-elasticsearch</artifactId>
 		</dependency>
-
-		<!-- 移除旧的Elasticsearch依赖，使用Spring Boot管理的版本 -->
-		<!--
-		<dependency>
-			<groupId>org.elasticsearch.client</groupId>
-			<artifactId>elasticsearch-rest-high-level-client</artifactId>
-			<version>7.14.0</version>
-		</dependency>
-		-->
 
 		<!-- Stanford NLP -->
 		<dependency>
@@ -107,16 +105,19 @@
 			<version>4.2.2</version>
 			<classifier>models</classifier>
 		</dependency>
+
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 		</dependency>
-		<dependency>
+
+		<!-- 删除了未使用的servlet-api依赖，Spring Boot已经包含 -->
+		<!-- <dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
 			<version>3.1.0</version>
 			<scope>provided</scope>
-		</dependency>
+		</dependency> -->
 	</dependencies>
 
 	<build>
@@ -128,5 +129,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
 </project>

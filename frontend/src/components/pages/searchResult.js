@@ -128,15 +128,7 @@ function SearchResult() {
         setLoading(true);
 
         try {
-            // 先获取总数
-            const countResponse = await axios.post(
-                "http://localhost:8888/main2022/advancedSearch/count",
-                searchFilter
-            );
-            const count = countResponse.data.count || 0;
-            setTotalCount(count);
-
-            // 再获取前500条数据用于展示
+            // 直接获取搜索结果，不需要先获取总数
             const response = await axios.post(
                 "http://localhost:8888/main2022/advancedSearch",
                 searchFilter
@@ -147,10 +139,13 @@ function SearchResult() {
             setCurrentPage(1); // 重置到第一页
             setSearchParams({ page: '1' }); // 同时更新URL
 
-            if (count > 500) {
-                message.success(`找到 ${count} 篇文献，当前显示前 500 条`);
+            // 设置总数为实际返回的结果数（最多500条）
+            setTotalCount(newPaperInfo.length);
+
+            if (newPaperInfo.length >= 500) {
+                message.success(`找到超过 500 篇文献，当前显示前 500 条`);
             } else {
-                message.success(`找到 ${count} 篇文献`);
+                message.success(`找到 ${newPaperInfo.length} 篇文献`);
             }
         } catch (error) {
             console.error("搜索请求失败:", error);
@@ -527,71 +522,46 @@ function SearchResult() {
 
             {/* 下载选项模态框 */}
             <Modal
-                title="选择下载选项"
+                title="下载数据"
                 visible={downloadModalVisible}
                 onCancel={() => setDownloadModalVisible(false)}
                 footer={null}
-                width={500}
+                width={400}
             >
                 <div style={{ padding: '20px 0' }}>
                     <Alert
                         message="下载提示"
-                        description={`当前搜索结果${totalCount > paperInfo.length ? `共找到 ${totalCount} 条记录，页面显示前 ${paperInfo.length} 条` : `共 ${paperInfo.length} 条记录`}`}
+                        description={`当前搜索结果共 ${paperInfo.length} 条记录`}
                         type="info"
                         style={{ marginBottom: 24 }}
                     />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        <Button
-                            type="primary"
-                            icon={<FileTextOutlined />}
-                            size="large"
-                            loading={downloadLoading}
-                            onClick={downloadCurrentData}
-                            style={{
-                                height: '60px',
-                                backgroundColor: '#52c41a',
-                                borderColor: '#52c41a'
-                            }}
-                        >
-                            <div style={{ textAlign: 'left' }}>
-                                <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                                    下载当前数据
-                                </div>
-                                <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                                    下载页面展示的 {paperInfo.length} 条记录
-                                </div>
+                    <Button
+                        type="primary"
+                        icon={<FileTextOutlined />}
+                        size="large"
+                        loading={downloadLoading}
+                        onClick={downloadCurrentData}
+                        style={{
+                            height: '60px',
+                            backgroundColor: '#b82e28',
+                            borderColor: '#b82e28',
+                            width: '100%'
+                        }}
+                    >
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
+                                下载当前数据
                             </div>
-                        </Button>
-
-                        {totalCount > paperInfo.length && (
-                            <Button
-                                type="primary"
-                                icon={<DatabaseOutlined />}
-                                size="large"
-                                loading={downloadLoading}
-                                onClick={downloadAllData}
-                                style={{
-                                    height: '60px',
-                                    backgroundColor: '#b82e28',
-                                    borderColor: '#b82e28'
-                                }}
-                            >
-                                <div style={{ textAlign: 'left' }}>
-                                    <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                                        下载全部数据
-                                    </div>
-                                    <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                                        下载所有 {totalCount} 条匹配记录（可能需要较长时间）
-                                    </div>
-                                </div>
-                            </Button>
-                        )}
-                    </div>
+                            <div style={{ fontSize: '12px', opacity: 0.8 }}>
+                                下载 {paperInfo.length} 条记录
+                            </div>
+                        </div>
+                    </Button>
 
                     <div style={{ marginTop: 16, textAlign: 'center' }}>
                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                            * 大量数据下载可能需要较长时间，请耐心等待
+                            * 系统限制单次最多返回500条记录
                         </Text>
                     </div>
                 </div>

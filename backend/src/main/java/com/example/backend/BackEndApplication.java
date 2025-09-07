@@ -7,7 +7,6 @@ import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfig
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 
-
 @SpringBootApplication(exclude = JpaRepositoriesAutoConfiguration.class)
 @MapperScan("com.example.backend.mapper")
 public class BackEndApplication extends SpringBootServletInitializer {
@@ -20,5 +19,4 @@ public class BackEndApplication extends SpringBootServletInitializer {
 	protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
 		return builder.sources(BackEndApplication.class);
 	}
-
 }

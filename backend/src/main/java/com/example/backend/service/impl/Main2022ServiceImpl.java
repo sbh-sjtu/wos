@@ -7,8 +7,8 @@ import com.example.backend.service.Main2022Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.function.BiConsumer;
 
 @Service
@@ -23,27 +23,109 @@ public class Main2022ServiceImpl implements Main2022Service {
         this.tableSelectorService = tableSelectorService;
     }
 
+    // ==================== 新增：学科分析专用方法 ====================
+
+    /**
+     * 学科分析专用查询：根据关键词和年份范围查询数据并按年份分组
+     */
+    public Map<String, List<main2022>> disciplinaryAnalysisSearch(String keyword, String startYear, String endYear) {
+        try {
+            System.out.println("开始学科分析查询 - 关键词: " + keyword + ", 年份范围: " + startYear + "-" + endYear);
+
+            // 验证参数
+            if (keyword == null || keyword.trim().isEmpty()) {
+                System.err.println("关键词为空");
+                return new TreeMap<>();
+            }
+
+            // 验证和调整年份范围
+            if (!tableSelectorService.isYearRangeValid(startYear, endYear)) {
+                int[] validRange = tableSelectorService.getValidYearRange(startYear, endYear);
+                startYear = String.valueOf(validRange[0]);
+                endYear = String.valueOf(validRange[1]);
+                System.out.println("年份范围已调整为: " + startYear + "-" + endYear);
+            }
+
+            // 确定需要查询的表
+            List<String> tableNames = tableSelectorService.determineTablesForDisciplinaryAnalysis(keyword, startYear, endYear);
+
+            if (tableNames.isEmpty()) {
+                System.err.println("没有找到可查询的表");
+                return new TreeMap<>();
+            }
+
+            System.out.println("学科分析查询表: " + tableNames);
+
+            // 构建查询条件
+            List<SearchFilter> filters = buildDisciplinaryAnalysisFilters(keyword);
+
+            // 执行查询
+            List<main2022> allData = main2022Mapper.disciplinaryAnalysisSearchMultiTable(filters, tableNames);
+
+            if (allData == null || allData.isEmpty()) {
+                System.out.println("查询结果为空");
+                return new TreeMap<>();
+            }
+
+            System.out.println("学科分析查询完成，获得 " + allData.size() + " 条记录");
+
+            // 按年份分组
+            Map<String, List<main2022>> groupedData = allData.stream()
+                    .filter(paper -> paper.getPubyear() != null && !paper.getPubyear().trim().isEmpty())
+                    .collect(Collectors.groupingBy(
+                            paper -> paper.getPubyear(),
+                            TreeMap::new,
+                            Collectors.toList()
+                    ));
+
+            System.out.println("按年份分组结果: " + groupedData.keySet());
+            groupedData.forEach((year, papers) ->
+                    System.out.println("  " + year + ": " + papers.size() + " 篇"));
+
+            return groupedData;
+
+        } catch (Exception e) {
+            System.err.println("学科分析查询失败: " + e.getMessage());
+            e.printStackTrace();
+            return new TreeMap<>();
+        }
+    }
+
+    /**
+     * 构建学科分析的搜索条件
+     */
+    private List<SearchFilter> buildDisciplinaryAnalysisFilters(String keyword) {
+        List<SearchFilter> filters = new ArrayList<>();
+
+        // 创建Topic搜索条件
+        SearchFilter topicFilter = new SearchFilter();
+        topicFilter.setId(1);
+        topicFilter.setSelects(List.of("AND", 1)); // Topic搜索
+        topicFilter.setInput(keyword);
+        filters.add(topicFilter);
+
+        return filters;
+    }
+
+    // ==================== 实现接口方法 ====================
+
     @Override
     public int countAdvancedSearch(List<SearchFilter> filters) {
         try {
-            // 根据搜索条件确定需要查询的表
             List<String> tableNames = tableSelectorService.determineTablesFromFilters(filters);
-
             if (tableNames.isEmpty()) {
                 System.out.println("没有找到匹配的表，返回0");
                 return 0;
             }
-
             System.out.println("计算数量 - 查询表: " + tableNames);
             return main2022Mapper.countAdvancedSearchMultiTable(filters, tableNames);
         } catch (Exception e) {
             System.err.println("多表计算数量失败: " + e.getMessage());
-            // 如果多表查询失败，回退到单表查询
             try {
                 return main2022Mapper.countAdvancedSearch(filters);
             } catch (Exception fallbackError) {
                 System.err.println("单表计算数量也失败: " + fallbackError.getMessage());
-                return 50000; // 返回一个估算值
+                return 50000;
             }
         }
     }
@@ -51,19 +133,15 @@ public class Main2022ServiceImpl implements Main2022Service {
     @Override
     public List<main2022> advancedSearch(List<SearchFilter> filters) {
         try {
-            // 根据搜索条件确定需要查询的表
             List<String> tableNames = tableSelectorService.determineTablesFromFilters(filters);
-
             if (tableNames.isEmpty()) {
                 System.out.println("没有找到匹配的表，返回空列表");
                 return new ArrayList<>();
             }
-
             System.out.println("高级搜索 - 查询表: " + tableNames);
             return main2022Mapper.advancedSearchMultiTable(filters, tableNames);
         } catch (Exception e) {
             System.err.println("多表高级搜索失败: " + e.getMessage());
-            // 如果多表查询失败，回退到单表查询
             try {
                 return main2022Mapper.advancedSearch(filters);
             } catch (Exception fallbackError) {
@@ -76,19 +154,15 @@ public class Main2022ServiceImpl implements Main2022Service {
     @Override
     public List<main2022> advancedSearchAll(List<SearchFilter> filters) {
         try {
-            // 根据搜索条件确定需要查询的表
             List<String> tableNames = tableSelectorService.determineTablesFromFilters(filters);
-
             if (tableNames.isEmpty()) {
                 System.out.println("没有找到匹配的表，返回空列表");
                 return new ArrayList<>();
             }
-
             System.out.println("高级搜索全部 - 查询表: " + tableNames);
             return main2022Mapper.advancedSearchAllMultiTable(filters, tableNames);
         } catch (Exception e) {
             System.err.println("多表全量搜索失败: " + e.getMessage());
-            // 如果多表查询失败，回退到单表查询
             try {
                 return main2022Mapper.advancedSearchAll(filters);
             } catch (Exception fallbackError) {
@@ -101,14 +175,11 @@ public class Main2022ServiceImpl implements Main2022Service {
     @Override
     public List<main2022> advancedSearchAllWithProgress(List<SearchFilter> filters, BiConsumer<Integer, Integer> progressCallback) {
         try {
-            // 验证输入参数
             if (filters == null || filters.isEmpty()) {
                 return new ArrayList<>();
             }
 
             System.out.println("开始多表查询数据...");
-
-            // 根据搜索条件确定需要查询的表
             List<String> tableNames = tableSelectorService.determineTablesFromFilters(filters);
 
             if (tableNames.isEmpty()) {
@@ -121,9 +192,8 @@ public class Main2022ServiceImpl implements Main2022Service {
 
             System.out.println("多表查询带进度 - 查询表: " + tableNames);
 
-            // 由于tempdb空间限制，直接查询所有数据（不使用COUNT和分页）
             if (progressCallback != null) {
-                progressCallback.accept(0, 1); // 设置一个虚拟的总数
+                progressCallback.accept(0, 1);
             }
 
             List<main2022> allData = main2022Mapper.advancedSearchAllMultiTable(filters, tableNames);
@@ -134,7 +204,6 @@ public class Main2022ServiceImpl implements Main2022Service {
 
             System.out.println("多表查询完成，获得 " + allData.size() + " 条记录");
 
-            // 更新最终进度
             if (progressCallback != null) {
                 progressCallback.accept(allData.size(), allData.size());
             }
@@ -145,7 +214,6 @@ public class Main2022ServiceImpl implements Main2022Service {
             System.err.println("多表查询失败: " + e.getMessage());
             e.printStackTrace();
 
-            // 回退到单表查询
             try {
                 System.out.println("回退到单表查询...");
 
@@ -167,7 +235,6 @@ public class Main2022ServiceImpl implements Main2022Service {
 
             } catch (Exception fallbackError) {
                 System.err.println("单表查询也失败: " + fallbackError.getMessage());
-                // 最后的回退：返回空列表
                 if (progressCallback != null) {
                     progressCallback.accept(0, 0);
                 }
@@ -176,12 +243,10 @@ public class Main2022ServiceImpl implements Main2022Service {
         }
     }
 
+    // ==================== 扩展方法（原有方法保持） ====================
+
     /**
-     * 新增：根据年份范围查询
-     * @param filters 搜索条件
-     * @param startYear 开始年份
-     * @param endYear 结束年份
-     * @return 查询结果
+     * 根据年份范围查询
      */
     public List<main2022> advancedSearchByYearRange(List<SearchFilter> filters, Integer startYear, Integer endYear) {
         try {
@@ -203,12 +268,7 @@ public class Main2022ServiceImpl implements Main2022Service {
     }
 
     /**
-     * 新增：带进度的年份范围查询
-     * @param filters 搜索条件
-     * @param startYear 开始年份
-     * @param endYear 结束年份
-     * @param progressCallback 进度回调
-     * @return 查询结果
+     * 带进度的年份范围查询
      */
     public List<main2022> advancedSearchByYearRangeWithProgress(List<SearchFilter> filters,
                                                                 Integer startYear,
@@ -266,45 +326,35 @@ public class Main2022ServiceImpl implements Main2022Service {
     }
 
     /**
-     * 新增：获取支持的年份范围信息
-     * @return 支持的年份范围描述
+     * 获取支持的年份范围信息
      */
     public String getSupportedYearRange() {
         return tableSelectorService.getSupportedYearRange();
     }
 
     /**
-     * 新增：检查年份是否支持
-     * @param year 年份
-     * @return 是否支持
+     * 检查年份是否支持
      */
     public boolean isYearSupported(int year) {
         return tableSelectorService.isYearSupported(year);
     }
 
     /**
-     * 新增：获取所有支持的表名
-     * @return 支持的表名列表
+     * 获取所有支持的表名
      */
     public List<String> getAllSupportedTables() {
         return tableSelectorService.getAllSupportedTables();
     }
 
     /**
-     * 新增：根据搜索条件获取相关的表名
-     * @param filters 搜索条件
-     * @return 相关的表名列表
+     * 根据搜索条件获取相关的表名
      */
     public List<String> getRelevantTables(List<SearchFilter> filters) {
         return tableSelectorService.determineTablesFromFilters(filters);
     }
 
     /**
-     * 新增：采样查询（用于大数据量的快速预览）
-     * @param filters 搜索条件
-     * @param samplePercent 采样百分比
-     * @param limit 最大结果数
-     * @return 采样结果
+     * 采样查询（用于大数据量的快速预览）
      */
     public List<main2022> advancedSearchSample(List<SearchFilter> filters, double samplePercent, int limit) {
         try {
@@ -332,13 +382,7 @@ public class Main2022ServiceImpl implements Main2022Service {
     }
 
     /**
-     * 新增：按年份范围采样查询
-     * @param filters 搜索条件
-     * @param startYear 开始年份
-     * @param endYear 结束年份
-     * @param samplePercent 采样百分比
-     * @param limit 最大结果数
-     * @return 采样结果
+     * 按年份范围采样查询
      */
     public List<main2022> advancedSearchSampleByYearRange(List<SearchFilter> filters,
                                                           Integer startYear,

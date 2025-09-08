@@ -7,13 +7,100 @@ import java.util.List;
 
 public class SqlProvider {
 
+    // ==================== 新增：学科分析专用查询方法 ====================
+
+    /**
+     * 学科分析专用多表查询
+     */
+    public String disciplinaryAnalysisSearchMultiTable(@Param("filters") List<SearchFilter> filters,
+                                                       @Param("tableNames") List<String> tableNames) {
+        if (tableNames == null || tableNames.isEmpty()) {
+            return "SELECT * FROM [Wos_2022] WHERE 1=0"; // 返回空结果
+        }
+
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT * FROM (");
+
+        for (int i = 0; i < tableNames.size(); i++) {
+            if (i > 0) {
+                sql.append(" UNION ALL ");
+            }
+
+            sql.append("SELECT * FROM [").append(tableNames.get(i)).append("]");
+
+            if (filters != null && !filters.isEmpty()) {
+                sql.append(" WHERE ").append(buildDisciplinaryAnalysisSql(filters));
+            }
+        }
+
+        sql.append(") AS combined_results ORDER BY pubyear, wos_uid");
+
+        return sql.toString();
+    }
+
+    /**
+     * 构建学科分析专用的SQL条件
+     * 支持在多个字段中搜索关键词
+     */
+    private String buildDisciplinaryAnalysisSql(List<SearchFilter> filters) {
+        StringBuilder sql = new StringBuilder();
+        boolean isFirst = true;
+
+        for (SearchFilter filter : filters) {
+            if (!isFirst) {
+                sql.append(" ").append(filter.getSelects().get(0)).append(" ");
+            }
+            isFirst = false;
+
+            String columnCondition = buildDisciplinaryColumnCondition(filter);
+            sql.append(columnCondition);
+        }
+
+        return sql.toString();
+    }
+
+    /**
+     * 构建学科分析的字段条件 - 修复版本，移除不存在的字段
+     */
+    private String buildDisciplinaryColumnCondition(SearchFilter filter) {
+        String keyword = filter.getInput();
+        keyword = escapeSqlServerKeyword(keyword);
+
+        System.out.println("学科分析关键词:" + keyword);
+        StringBuilder condition = new StringBuilder();
+
+        // 只使用确认存在的字段，移除abstract_text等可能不存在的字段
+        if ("1".equals(filter.getSelects().get(1).toString())) {
+            // Topic搜索：只在确认存在的核心字段中搜索
+            condition.append("(")
+                    .append("keyword LIKE '%").append(keyword).append("%' OR ")
+                    .append("article_title LIKE '%").append(keyword).append("%'")
+                    .append(")");
+        } else if ("2".equals(filter.getSelects().get(1).toString())) {
+            condition.append("article_title LIKE '%").append(keyword).append("%'");
+        } else if ("3".equals(filter.getSelects().get(1).toString())) {
+            condition.append("author_fullname LIKE '%").append(keyword).append("%'");
+        } else if ("4".equals(filter.getSelects().get(1).toString())) {
+            condition.append("journal_title_source LIKE '%").append(keyword).append("%'");
+        } else if ("5".equals(filter.getSelects().get(1).toString())) {
+            condition.append("pubyear LIKE '%").append(keyword).append("%'");
+        } else if ("6".equals(filter.getSelects().get(1).toString())) {
+            condition.append("identifier_doi LIKE '%").append(keyword).append("%'");
+        }
+
+        System.out.println("学科分析条件:" + condition.toString());
+        return condition.toString();
+    }
+
+    // ==================== 保持原有的所有方法不变 ====================
+
     /**
      * 动态多表高级搜索（限制500条）
      */
     public String advancedSearchMultiTable(@Param("filters") List<SearchFilter> filters,
                                            @Param("tableNames") List<String> tableNames) {
         if (tableNames == null || tableNames.isEmpty()) {
-            return "SELECT TOP 500 * FROM [Wos_2022] WHERE 1=0"; // 返回空结果
+            return "SELECT TOP 500 * FROM [Wos_2022] WHERE 1=0";
         }
 
         StringBuilder sql = new StringBuilder();
@@ -42,7 +129,7 @@ public class SqlProvider {
     public String advancedSearchAllMultiTable(@Param("filters") List<SearchFilter> filters,
                                               @Param("tableNames") List<String> tableNames) {
         if (tableNames == null || tableNames.isEmpty()) {
-            return "SELECT * FROM [Wos_2022] WHERE 1=0"; // 返回空结果
+            return "SELECT * FROM [Wos_2022] WHERE 1=0";
         }
 
         StringBuilder sql = new StringBuilder();
@@ -136,7 +223,7 @@ public class SqlProvider {
     public String advancedSearch(@Param("filters") List<SearchFilter> filters) {
         return new SQL() {{
             SELECT("TOP 500 *");
-            FROM("[Wos_2022]"); // 默认使用2022年表
+            FROM("[Wos_2022]");
 
             if (filters != null && !filters.isEmpty()) {
                 WHERE(buildDynamicSql(filters));
@@ -186,7 +273,7 @@ public class SqlProvider {
     }
 
     /**
-     * 构建动态SQL条件
+     * 构建动态SQL条件（原有方法）
      */
     private String buildDynamicSql(List<SearchFilter> filters) {
         StringBuilder sql = new StringBuilder();
@@ -206,7 +293,7 @@ public class SqlProvider {
     }
 
     /**
-     * 构建字段条件
+     * 构建字段条件（原有方法）
      */
     private String buildColumnCondition(SearchFilter filter) {
         String keyword = filter.getInput();
@@ -223,7 +310,7 @@ public class SqlProvider {
         } else if ("3".equals(filter.getSelects().get(1).toString())) {
             condition.append("author_fullname LIKE '%").append(keyword).append("%'");
         } else if ("4".equals(filter.getSelects().get(1).toString())) {
-            condition.append("publisher LIKE '%").append(keyword).append("%'");
+            condition.append("journal_title_source LIKE '%").append(keyword).append("%'");
         } else if ("5".equals(filter.getSelects().get(1).toString())) {
             condition.append("pubyear LIKE '%").append(keyword).append("%'");
         } else if ("6".equals(filter.getSelects().get(1).toString())) {

@@ -10,6 +10,17 @@ import java.util.List;
 @Mapper
 public interface Main2022Mapper {
 
+    // ==================== 新增：学科分析专用查询方法 ====================
+
+    /**
+     * 学科分析专用多表查询
+     */
+    @SelectProvider(type = SqlProvider.class, method = "disciplinaryAnalysisSearchMultiTable")
+    List<main2022> disciplinaryAnalysisSearchMultiTable(@Param("filters") List<SearchFilter> filters,
+                                                        @Param("tableNames") List<String> tableNames);
+
+    // ==================== 保持原有的所有方法不变 ====================
+
     /**
      * 动态多表高级搜索（限制500条）
      */

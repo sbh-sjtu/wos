@@ -166,20 +166,43 @@ public class Main2022Controller {
                 int end = Integer.parseInt(endDate);
 
                 Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
-                if (start < 1970 || end > 1979) {
+
+                // 检查是否超出支持范围
+                if (start < 1970 || end > 2020) {
                     Map<String, Object> warningResponse = new HashMap<>();
                     warningResponse.put("warning", "部分年份超出当前支持范围 " + serviceImpl.getSupportedYearRange() +
                             "，将只查询支持范围内的数据");
                     warningResponse.put("supportedRange", serviceImpl.getSupportedYearRange());
+
+                    // 调整年份范围到支持范围内
+                    start = Math.max(start, 1970);
+                    end = Math.min(end, 2020);
+                    startDate = String.valueOf(start);
+                    endDate = String.valueOf(end);
+
+                    System.out.println("年份范围已调整为: " + startDate + "-" + endDate);
                 }
+
+                if (start > end) {
+                    Map<String, Object> errorResponse = new HashMap<>();
+                    errorResponse.put("error", "开始年份不能大于结束年份");
+                    return ResponseEntity.badRequest().body(errorResponse);
+                }
+
             } catch (NumberFormatException e) {
-                // 如果年份格式不正确，让Elasticsearch处理
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "年份格式不正确，请输入有效的年份");
+                return ResponseEntity.badRequest().body(errorResponse);
             }
 
-            // 获取按年份分组的数据
-            Map<String, List<main2022>> data = main2022ElasticSearchService.searchByKeywordAndDateRange(keyword, startDate, endDate);
+            // 改为使用数据库查询而不是Elasticsearch
+            System.out.println("开始从数据库查询学科分析数据...");
 
-            System.out.println("从 Elasticsearch 获取的数据: " + data.size() + " 年份的数据");
+            // 调用Main2022ServiceImpl的新方法进行数据库查询
+            Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
+            Map<String, List<main2022>> data = serviceImpl.disciplinaryAnalysisSearch(keyword, startDate, endDate);
+
+            System.out.println("从数据库获取的数据: " + data.size() + " 年份的数据");
 
             if (data.isEmpty()) {
                 Map<String, Object> emptyResponse = new HashMap<>();

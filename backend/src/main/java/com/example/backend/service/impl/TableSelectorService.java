@@ -6,25 +6,71 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * 动态表选择服务
- * 根据查询条件智能选择需要查询的表
+ * 动态表选择服务 - 增强版
+ * 支持学科分析的表选择逻辑
  */
 @Service
 public class TableSelectorService {
 
-    // 当前支持的年份范围（已经修改过的表）
+    // 扩展支持的年份范围
     private static final int MIN_YEAR = 1970;
-    private static final int MAX_YEAR = 1979;
+    private static final int MAX_YEAR = 2020;
 
     /**
-     * 根据搜索条件确定需要查询的表名列表
-     * @param searchFilters 搜索条件
-     * @return 需要查询的表名列表
+     * 新增：根据关键词和年份范围确定需要查询的表（专用于学科分析）
      */
+    public List<String> determineTablesForDisciplinaryAnalysis(String keyword, String startYear, String endYear) {
+        try {
+            Integer start = startYear != null ? Integer.parseInt(startYear) : MIN_YEAR;
+            Integer end = endYear != null ? Integer.parseInt(endYear) : MAX_YEAR;
+
+            return determineTablesByYearRange(start, end);
+        } catch (NumberFormatException e) {
+            System.err.println("年份格式错误，使用默认范围: " + e.getMessage());
+            return getAllSupportedTables();
+        }
+    }
+
+    /**
+     * 新增：验证年份范围是否有效
+     */
+    public boolean isYearRangeValid(String startYear, String endYear) {
+        try {
+            int start = Integer.parseInt(startYear);
+            int end = Integer.parseInt(endYear);
+
+            return start >= MIN_YEAR && end <= MAX_YEAR && start <= end;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    /**
+     * 新增：获取有效的年份范围（调整到支持范围内）
+     */
+    public int[] getValidYearRange(String startYear, String endYear) {
+        try {
+            int start = Integer.parseInt(startYear);
+            int end = Integer.parseInt(endYear);
+
+            start = Math.max(start, MIN_YEAR);
+            end = Math.min(end, MAX_YEAR);
+
+            if (start > end) {
+                start = MIN_YEAR;
+                end = MAX_YEAR;
+            }
+
+            return new int[]{start, end};
+        } catch (NumberFormatException e) {
+            return new int[]{MIN_YEAR, MAX_YEAR};
+        }
+    }
+
+    // 保持原有的其他方法不变...
     public List<String> determineTablesFromFilters(List<?> searchFilters) {
         Set<Integer> targetYears = new HashSet<>();
 
-        // 从搜索条件中提取年份信息
         if (searchFilters != null && !searchFilters.isEmpty()) {
             for (Object filter : searchFilters) {
                 Set<Integer> yearsFromFilter = extractYearsFromFilter(filter);
@@ -32,24 +78,16 @@ public class TableSelectorService {
             }
         }
 
-        // 如果没有找到年份信息，查询所有支持的表
         if (targetYears.isEmpty()) {
             return getAllSupportedTables();
         }
 
-        // 过滤出支持的年份并生成表名
         return targetYears.stream()
                 .filter(year -> year >= MIN_YEAR && year <= MAX_YEAR)
                 .map(year -> "Wos_" + year)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * 根据年份范围确定需要查询的表
-     * @param startYear 开始年份
-     * @param endYear 结束年份
-     * @return 表名列表
-     */
     public List<String> determineTablesByYearRange(Integer startYear, Integer endYear) {
         if (startYear == null || endYear == null) {
             return getAllSupportedTables();
@@ -67,67 +105,38 @@ public class TableSelectorService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * 获取所有支持的表名
-     * @return 所有支持的表名列表
-     */
     public List<String> getAllSupportedTables() {
         return IntStream.rangeClosed(MIN_YEAR, MAX_YEAR)
                 .mapToObj(year -> "Wos_" + year)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * 检查表是否被支持
-     * @param tableName 表名
-     * @return 是否支持
-     */
-    public boolean isTableSupported(String tableName) {
-        if (tableName == null || !tableName.startsWith("Wos_")) {
-            return false;
-        }
-
-        try {
-            int year = Integer.parseInt(tableName.substring(4));
-            return year >= MIN_YEAR && year <= MAX_YEAR;
-        } catch (NumberFormatException e) {
-            return false;
-        }
+    public String getSupportedYearRange() {
+        return MIN_YEAR + "-" + MAX_YEAR;
     }
 
-    /**
-     * 从搜索条件中提取年份信息
-     * @param filter 搜索条件
-     * @return 年份集合
-     */
+    public boolean isYearSupported(int year) {
+        return year >= MIN_YEAR && year <= MAX_YEAR;
+    }
+
+    // 其他私有方法保持不变...
     private Set<Integer> extractYearsFromFilter(Object filter) {
         Set<Integer> years = new HashSet<>();
-
         try {
-            // 使用反射获取filter的input字段
             String input = getInputFromFilter(filter);
             if (input == null || input.trim().isEmpty()) {
                 return years;
             }
-
-            // 获取搜索类型
             Integer searchType = getSearchTypeFromFilter(filter);
-
-            // 如果是年份搜索（类型5）
             if (searchType != null && searchType == 5) {
                 years.addAll(parseYearsFromInput(input));
             }
-
         } catch (Exception e) {
             System.err.println("提取年份信息失败: " + e.getMessage());
         }
-
         return years;
     }
 
-    /**
-     * 从filter对象中获取input字段值
-     */
     private String getInputFromFilter(Object filter) {
         try {
             return (String) filter.getClass().getMethod("getInput").invoke(filter);
@@ -136,9 +145,6 @@ public class TableSelectorService {
         }
     }
 
-    /**
-     * 从filter对象中获取搜索类型
-     */
     private Integer getSearchTypeFromFilter(Object filter) {
         try {
             Object selects = filter.getClass().getMethod("getSelects").invoke(filter);
@@ -154,21 +160,13 @@ public class TableSelectorService {
         return null;
     }
 
-    /**
-     * 从输入字符串中解析年份
-     * 支持多种格式：2020, 2020-2022, 2020,2021,2022等
-     */
     private Set<Integer> parseYearsFromInput(String input) {
         Set<Integer> years = new HashSet<>();
-
         if (input == null || input.trim().isEmpty()) {
             return years;
         }
-
         input = input.trim();
-
         try {
-            // 处理范围格式：2020-2022
             if (input.contains("-")) {
                 String[] parts = input.split("-");
                 if (parts.length == 2) {
@@ -180,8 +178,6 @@ public class TableSelectorService {
                     return years;
                 }
             }
-
-            // 处理逗号分隔格式：2020,2021,2022
             if (input.contains(",")) {
                 String[] parts = input.split(",");
                 for (String part : parts) {
@@ -194,33 +190,11 @@ public class TableSelectorService {
                 }
                 return years;
             }
-
-            // 处理单个年份
             int year = Integer.parseInt(input);
             years.add(year);
-
         } catch (NumberFormatException e) {
-            // 如果解析失败，返回空集合
             System.out.println("无法解析年份: " + input);
         }
-
         return years;
-    }
-
-    /**
-     * 获取支持的年份范围信息
-     * @return 年份范围描述
-     */
-    public String getSupportedYearRange() {
-        return MIN_YEAR + "-" + MAX_YEAR;
-    }
-
-    /**
-     * 检查年份是否在支持范围内
-     * @param year 年份
-     * @return 是否支持
-     */
-    public boolean isYearSupported(int year) {
-        return year >= MIN_YEAR && year <= MAX_YEAR;
     }
 }

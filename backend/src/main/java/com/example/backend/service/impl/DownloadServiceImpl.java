@@ -30,7 +30,8 @@ public class DownloadServiceImpl implements DownloadService {
 
     @Override
     public byte[] generateCSVBytes(List<main2022> data) {
-        String[] header = {"seq_temp","wos_uid","database","sortdate","pubyear","has_abstract","coverdate","pubmonth","vol","issue",
+        // 更新CSV头部，移除seq_temp字段
+        String[] header = {"wos_uid","database","sortdate","pubyear","has_abstract","coverdate","pubmonth","vol","issue",
                 "special_issue","supplement","early_access_date","early_access_month","early_access_year","article_type","page_count",
                 "page_begin","page_end","journal_title_source","journal_title_abbrev","journal_title_iso","journal_title_11","journal_title_29",
                 "article_title","article_doctype","heading","subheadings","subject_traditional","subject_extended","fund_text","keyword",
@@ -50,7 +51,7 @@ public class DownloadServiceImpl implements DownloadService {
             // 写入每一行数据
             for (main2022 main2022 : data) {
                 String[] row = {
-                        String.valueOf(main2022.getSeq_temp()),
+                        // 移除seq_temp，使用wos_uid作为第一列
                         main2022.getWos_uid(),
                         main2022.getDatabase(),
                         main2022.getSortdate(),

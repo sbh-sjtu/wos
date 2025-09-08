@@ -78,7 +78,7 @@ public class ElasticsearchDebugController {
             sampleHits.forEach(hit -> {
                 main2022 doc = hit.getContent();
                 Map<String, Object> sample = new HashMap<>();
-                sample.put("seq_temp", doc.getSeq_temp());
+                // 使用wos_uid替代seq_temp
                 sample.put("wos_uid", doc.getWos_uid());
                 sample.put("pubyear", doc.getPubyear());
                 sample.put("article_title", doc.getArticle_title() != null ?
@@ -225,12 +225,18 @@ public class ElasticsearchDebugController {
             int keywordNotNull = 0;
             int titleNotNull = 0;
             int subjectNotNull = 0;
+            int wosUidNotNull = 0;
 
             Set<String> uniqueYears = new HashSet<>();
 
             for (var hit : sampleHits) {
                 main2022 doc = hit.getContent();
                 totalDocs++;
+
+                // 统计wos_uid不为空的数量（替代seq_temp）
+                if (doc.getWos_uid() != null && !doc.getWos_uid().trim().isEmpty()) {
+                    wosUidNotNull++;
+                }
 
                 if (doc.getPubyear() != null && !doc.getPubyear().trim().isEmpty()) {
                     pubyearNotNull++;
@@ -248,6 +254,7 @@ public class ElasticsearchDebugController {
             }
 
             fieldStats.put("totalSampleDocs", totalDocs);
+            fieldStats.put("wosUidNotNullCount", wosUidNotNull); // 替代seq_temp统计
             fieldStats.put("pubyearNotNullCount", pubyearNotNull);
             fieldStats.put("keywordNotNullCount", keywordNotNull);
             fieldStats.put("titleNotNullCount", titleNotNull);
@@ -290,6 +297,28 @@ public class ElasticsearchDebugController {
             });
 
             result.put("yearCounts", yearCounts);
+            result.put("status", "SUCCESS");
+
+        } catch (Exception e) {
+            result.put("status", "ERROR");
+            result.put("error", e.getMessage());
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    /**
+     * 新增：测试多表查询功能
+     */
+    @GetMapping("/test-multi-table")
+    public Map<String, Object> testMultiTableQuery() {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            // 这里可以添加测试多表查询的逻辑
+            result.put("message", "多表查询测试功能");
+            result.put("supportedYearRange", "1970-1979");
             result.put("status", "SUCCESS");
 
         } catch (Exception e) {

@@ -7,6 +7,7 @@ import com.example.backend.service.DisciplinaryAnalysis;
 import com.example.backend.service.Main2022Service;
 import com.example.backend.service.Main2022ElasticSearchService;
 import com.example.backend.service.impl.Main2022ElasticSearchServiceImpl;
+import com.example.backend.service.impl.Main2022ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
@@ -22,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Controller for main2022（暂时的取名，因为使用的数据是部分2022年的数据）
+ * Controller for main2022（支持动态多表查询）
  */
 @RestController
 @RequestMapping("/main2022")
@@ -54,6 +55,83 @@ public class Main2022Controller {
         return main2022Service.advancedSearch(selectInfo);
     }
 
+    /**
+     * 新增：按年份范围进行高级搜索
+     */
+    @PostMapping(value = "/advancedSearchByYear")
+    public ResponseEntity<Map<String, Object>> advancedSearchByYear(@RequestBody Map<String, Object> requestData) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // 解析请求参数
+            @SuppressWarnings("unchecked")
+            List<SearchFilter> filters = (List<SearchFilter>) requestData.get("filters");
+            Integer startYear = (Integer) requestData.get("startYear");
+            Integer endYear = (Integer) requestData.get("endYear");
+
+            // 验证参数
+            if (filters == null || filters.isEmpty()) {
+                response.put("error", "搜索条件不能为空");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // 如果年份为空，使用默认范围
+            if (startYear == null || endYear == null) {
+                startYear = 1970;
+                endYear = 1979;
+            }
+
+            // 检查年份范围是否有效
+            Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
+            if (!serviceImpl.isYearSupported(startYear) || !serviceImpl.isYearSupported(endYear)) {
+                response.put("error", "年份范围超出支持范围: " + serviceImpl.getSupportedYearRange());
+                response.put("supportedRange", serviceImpl.getSupportedYearRange());
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // 执行搜索
+            List<main2022> results = serviceImpl.advancedSearchByYearRange(filters, startYear, endYear);
+
+            response.put("data", results);
+            response.put("count", results.size());
+            response.put("searchedYearRange", startYear + "-" + endYear);
+            response.put("supportedYearRange", serviceImpl.getSupportedYearRange());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("按年份范围搜索失败: " + e.getMessage());
+            e.printStackTrace();
+
+            response.put("error", "搜索失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * 新增：获取支持的年份范围信息
+     */
+    @GetMapping("/supportedYearRange")
+    public ResponseEntity<Map<String, Object>> getSupportedYearRange() {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
+            String yearRange = serviceImpl.getSupportedYearRange();
+
+            response.put("supportedYearRange", yearRange);
+            response.put("minYear", 1970);
+            response.put("maxYear", 1979);
+            response.put("message", "当前支持的年份范围");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("error", "获取年份范围信息失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
     @PostMapping("/fullTextSearch")
     public List<main2022> search(@RequestParam String query) {
         return main2022ElasticSearchService.fullTextSearch(query);
@@ -80,6 +158,22 @@ public class Main2022Controller {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("error", "开始和结束年份不能为空");
                 return ResponseEntity.badRequest().body(errorResponse);
+            }
+
+            // 检查年份范围是否在支持范围内
+            try {
+                int start = Integer.parseInt(startDate);
+                int end = Integer.parseInt(endDate);
+
+                Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
+                if (start < 1970 || end > 1979) {
+                    Map<String, Object> warningResponse = new HashMap<>();
+                    warningResponse.put("warning", "部分年份超出当前支持范围 " + serviceImpl.getSupportedYearRange() +
+                            "，将只查询支持范围内的数据");
+                    warningResponse.put("supportedRange", serviceImpl.getSupportedYearRange());
+                }
+            } catch (NumberFormatException e) {
+                // 如果年份格式不正确，让Elasticsearch处理
             }
 
             // 获取按年份分组的数据

@@ -5,18 +5,16 @@ import org.springframework.data.elasticsearch.annotations.Document;
 
 /**
  * 论文数据的实体类
- * 基于实际的SQL Server表结构进行调整
- * 使用MyBatis，移除JPA注解
+ * 移除seq_temp字段，使用wos_uid作为主键
+ * 支持动态多表查询
  */
 @Data
 @Document(indexName = "main")
 public class main2022 {
-    // 移除 @Id @GeneratedValue @Column 等JPA注解
-    // 保留 Elasticsearch 的 @org.springframework.data.annotation.Id
+    // 使用wos_uid作为主键
     @org.springframework.data.annotation.Id
-    private Integer seq_temp;
-
     private String wos_uid;
+
     private String database;
     private String sortdate;
     private String pubyear;
@@ -89,7 +87,4 @@ public class main2022 {
     private String publisher;
     private String publisher_unified;
     private String publisher_display;
-
-    // 由于使用了@Data注解，Lombok会自动生成getter和setter方法
-    // 原有的手动getter/setter方法可以删除，简化代码
 }

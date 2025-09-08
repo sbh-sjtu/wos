@@ -8,12 +8,135 @@ import java.util.List;
 public class SqlProvider {
 
     /**
-     * 高级搜索（限制500条）
+     * 动态多表高级搜索（限制500条）
+     */
+    public String advancedSearchMultiTable(@Param("filters") List<SearchFilter> filters,
+                                           @Param("tableNames") List<String> tableNames) {
+        if (tableNames == null || tableNames.isEmpty()) {
+            return "SELECT TOP 500 * FROM [Wos_2022] WHERE 1=0"; // 返回空结果
+        }
+
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT TOP 500 * FROM (");
+
+        for (int i = 0; i < tableNames.size(); i++) {
+            if (i > 0) {
+                sql.append(" UNION ALL ");
+            }
+
+            sql.append("SELECT * FROM [").append(tableNames.get(i)).append("]");
+
+            if (filters != null && !filters.isEmpty()) {
+                sql.append(" WHERE ").append(buildDynamicSql(filters));
+            }
+        }
+
+        sql.append(") AS combined_results");
+
+        return sql.toString();
+    }
+
+    /**
+     * 动态多表高级搜索（获取所有数据）
+     */
+    public String advancedSearchAllMultiTable(@Param("filters") List<SearchFilter> filters,
+                                              @Param("tableNames") List<String> tableNames) {
+        if (tableNames == null || tableNames.isEmpty()) {
+            return "SELECT * FROM [Wos_2022] WHERE 1=0"; // 返回空结果
+        }
+
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT * FROM (");
+
+        for (int i = 0; i < tableNames.size(); i++) {
+            if (i > 0) {
+                sql.append(" UNION ALL ");
+            }
+
+            sql.append("SELECT * FROM [").append(tableNames.get(i)).append("]");
+
+            if (filters != null && !filters.isEmpty()) {
+                sql.append(" WHERE ").append(buildDynamicSql(filters));
+            }
+        }
+
+        sql.append(") AS combined_results");
+
+        return sql.toString();
+    }
+
+    /**
+     * 动态多表计算总数量
+     */
+    public String countAdvancedSearchMultiTable(@Param("filters") List<SearchFilter> filters,
+                                                @Param("tableNames") List<String> tableNames) {
+        if (tableNames == null || tableNames.isEmpty()) {
+            return "SELECT 0 AS total_count";
+        }
+
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT SUM(table_count) AS total_count FROM (");
+
+        for (int i = 0; i < tableNames.size(); i++) {
+            if (i > 0) {
+                sql.append(" UNION ALL ");
+            }
+
+            sql.append("SELECT COUNT(*) AS table_count FROM [").append(tableNames.get(i)).append("]");
+
+            if (filters != null && !filters.isEmpty()) {
+                sql.append(" WHERE ").append(buildDynamicSql(filters));
+            }
+        }
+
+        sql.append(") AS count_results");
+
+        return sql.toString();
+    }
+
+    /**
+     * 动态多表采样查询
+     */
+    public String advancedSearchSampleMultiTable(@Param("filters") List<SearchFilter> filters,
+                                                 @Param("tableNames") List<String> tableNames,
+                                                 @Param("samplePercent") double samplePercent,
+                                                 @Param("limit") int limit) {
+        if (tableNames == null || tableNames.isEmpty()) {
+            return "SELECT TOP " + limit + " * FROM [Wos_2022] WHERE 1=0";
+        }
+
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT TOP ").append(limit).append(" * FROM (");
+
+        for (int i = 0; i < tableNames.size(); i++) {
+            if (i > 0) {
+                sql.append(" UNION ALL ");
+            }
+
+            if (samplePercent > 0 && samplePercent < 100) {
+                sql.append("SELECT * FROM [").append(tableNames.get(i))
+                        .append("] TABLESAMPLE(").append(samplePercent).append(" PERCENT)");
+            } else {
+                sql.append("SELECT * FROM [").append(tableNames.get(i)).append("]");
+            }
+
+            if (filters != null && !filters.isEmpty()) {
+                sql.append(" WHERE ").append(buildDynamicSql(filters));
+            }
+        }
+
+        sql.append(") AS sampled_results");
+
+        return sql.toString();
+    }
+
+    /**
+     * 保留原有的单表查询方法（向后兼容）
      */
     public String advancedSearch(@Param("filters") List<SearchFilter> filters) {
         return new SQL() {{
             SELECT("TOP 500 *");
-            FROM("[Wos_2022]");
+            FROM("[Wos_2022]"); // 默认使用2022年表
 
             if (filters != null && !filters.isEmpty()) {
                 WHERE(buildDynamicSql(filters));
@@ -21,10 +144,6 @@ public class SqlProvider {
         }}.toString();
     }
 
-    /**
-     * 高级搜索（获取所有数据，完全避免排序）
-     * 注意：这将按照表的自然存储顺序返回数据
-     */
     public String advancedSearchAll(@Param("filters") List<SearchFilter> filters) {
         return new SQL() {{
             SELECT("*");
@@ -36,9 +155,6 @@ public class SqlProvider {
         }}.toString();
     }
 
-    /**
-     * 计算符合条件的总数量
-     */
     public String countAdvancedSearch(@Param("filters") List<SearchFilter> filters) {
         return new SQL() {{
             SELECT("COUNT(*)");
@@ -50,10 +166,6 @@ public class SqlProvider {
         }}.toString();
     }
 
-    /**
-     * 简化的批量查询（避免任何排序操作）
-     * 使用TABLESAMPLE来随机采样数据，避免全表扫描
-     */
     public String advancedSearchSample(@Param("filters") List<SearchFilter> filters,
                                        @Param("samplePercent") double samplePercent,
                                        @Param("limit") int limit) {
@@ -73,6 +185,9 @@ public class SqlProvider {
         return sql.toString();
     }
 
+    /**
+     * 构建动态SQL条件
+     */
     private String buildDynamicSql(List<SearchFilter> filters) {
         StringBuilder sql = new StringBuilder();
         boolean isFirst = true;
@@ -90,6 +205,9 @@ public class SqlProvider {
         return sql.toString();
     }
 
+    /**
+     * 构建字段条件
+     */
     private String buildColumnCondition(SearchFilter filter) {
         String keyword = filter.getInput();
         keyword = escapeSqlServerKeyword(keyword);
@@ -111,6 +229,7 @@ public class SqlProvider {
         } else if ("6".equals(filter.getSelects().get(1).toString())) {
             condition.append("identifier_doi LIKE '%").append(keyword).append("%'");
         }
+
         System.out.println("condition:" + condition.toString());
         return condition.toString();
     }

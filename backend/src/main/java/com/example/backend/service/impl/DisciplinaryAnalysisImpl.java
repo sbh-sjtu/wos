@@ -1,8 +1,9 @@
 package com.example.backend.service.impl;
 
-import com.example.backend.model.main2022;
 import com.example.backend.service.DisciplinaryAnalysis;
 import org.springframework.stereotype.Service;
+
+import com.example.backend.model.main2022;
 
 import java.util.*;
 import java.util.regex.Matcher;

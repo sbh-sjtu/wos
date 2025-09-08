@@ -12,24 +12,35 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
 
 @Service
 public class DownloadServiceImpl implements DownloadService {
 
+    // 临时存储文件数据的Map（生产环境建议使用Redis或文件系统）
+    private final Map<String, byte[]> temporaryFiles = new ConcurrentHashMap<>();
+
     @Override
     public ResponseEntity<byte[]> downloadCSV(List<main2022> data) {
+        byte[] csvData = generateCSVBytes(data);
+        return createDownloadResponse(csvData, "paper_detail.csv");
+    }
+
+    @Override
+    public byte[] generateCSVBytes(List<main2022> data) {
         String[] header = {"seq_temp","wos_uid","database","sortdate","pubyear","has_abstract","coverdate","pubmonth","vol","issue",
-        "special_issue","supplement","early_access_date","early_access_month","early_access_year","article_type","page_count",
-        "page_begin","page_end","journal_title_source","journal_title_abbrev","journal_title_iso","journal_title_11","journal_title_29",
-        "article_title","article_doctype","heading","subheadings","subject_traditional","subject_extended","fund_text","keyword",
-        "keyword_plus","abstract_text","ids","bib_id","bib_pagecount","reviewed_work","languages","rw_authors","rw_year","rw_language",
-        "book_note","bk_binding","bk_publisher","bk_prepay","bk_ordering","identifier_accession_no","identifier_issn","identifier_eissn",
-        "identifier_isbn","identifier_eisbn","identifier_doi","identifier_pmid","normalized_doctype","is_OA","oases","subj_group_macro_id",
-        "subj_group_macro_value","subj_group_meso_id","subj_group_meso_value","subj_group_micro_id","subj_group_micro_value",
-        "author_fullname","author_displayname","author_wosname","grant_info","address","reprint_address","email","contributor",
+                "special_issue","supplement","early_access_date","early_access_month","early_access_year","article_type","page_count",
+                "page_begin","page_end","journal_title_source","journal_title_abbrev","journal_title_iso","journal_title_11","journal_title_29",
+                "article_title","article_doctype","heading","subheadings","subject_traditional","subject_extended","fund_text","keyword",
+                "keyword_plus","abstract_text","ids","bib_id","bib_pagecount","reviewed_work","languages","rw_authors","rw_year","rw_language",
+                "book_note","bk_binding","bk_publisher","bk_prepay","bk_ordering","identifier_accession_no","identifier_issn","identifier_eissn",
+                "identifier_isbn","identifier_eisbn","identifier_doi","identifier_pmid","normalized_doctype","is_OA","oases","subj_group_macro_id",
+                "subj_group_macro_value","subj_group_meso_id","subj_group_meso_value","subj_group_micro_id","subj_group_micro_value",
+                "author_fullname","author_displayname","author_wosname","grant_info","address","reprint_address","email","contributor",
                 "publisher","publisher_unified","publisher_display"};
+
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
             // 写入表头
@@ -128,17 +139,12 @@ public class DownloadServiceImpl implements DownloadService {
 
                 outputStream.write(csvRow.getBytes(StandardCharsets.UTF_8));
                 outputStream.write("\n".getBytes(StandardCharsets.UTF_8));
-
             }
 
-            // 返回 CSV 文件
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=paper_detail.csv")
-                    .contentType(org.springframework.http.MediaType.TEXT_PLAIN)
-                    .body(outputStream.toByteArray());
+            return outputStream.toByteArray();
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return new byte[0];
         } finally {
             try {
                 outputStream.close();
@@ -146,5 +152,38 @@ public class DownloadServiceImpl implements DownloadService {
                 e.printStackTrace();
             }
         }
+    }
+
+    @Override
+    public ResponseEntity<byte[]> createDownloadResponse(byte[] data, String fileName) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
+                .contentType(org.springframework.http.MediaType.TEXT_PLAIN)
+                .body(data);
+    }
+
+    @Override
+    public void storeTemporaryFile(String taskId, byte[] data) {
+        temporaryFiles.put(taskId, data);
+
+        // 设置定时清理（24小时后清理）
+        new Thread(() -> {
+            try {
+                Thread.sleep(24 * 60 * 60 * 1000); // 24小时
+                cleanupTemporaryFile(taskId);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }).start();
+    }
+
+    @Override
+    public byte[] getTemporaryFile(String taskId) {
+        return temporaryFiles.get(taskId);
+    }
+
+    @Override
+    public void cleanupTemporaryFile(String taskId) {
+        temporaryFiles.remove(taskId);
     }
 }

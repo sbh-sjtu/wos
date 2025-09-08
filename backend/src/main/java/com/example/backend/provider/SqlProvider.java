@@ -7,16 +7,70 @@ import java.util.List;
 
 public class SqlProvider {
 
+    /**
+     * 高级搜索（限制500条）
+     */
     public String advancedSearch(@Param("filters") List<SearchFilter> filters) {
         return new SQL() {{
             SELECT("TOP 500 *");
-            // 根据实际的表名格式调整，可能需要根据年份动态生成表名
             FROM("[Wos_2022]");
 
             if (filters != null && !filters.isEmpty()) {
                 WHERE(buildDynamicSql(filters));
             }
         }}.toString();
+    }
+
+    /**
+     * 高级搜索（获取所有数据，完全避免排序）
+     * 注意：这将按照表的自然存储顺序返回数据
+     */
+    public String advancedSearchAll(@Param("filters") List<SearchFilter> filters) {
+        return new SQL() {{
+            SELECT("*");
+            FROM("[Wos_2022]");
+
+            if (filters != null && !filters.isEmpty()) {
+                WHERE(buildDynamicSql(filters));
+            }
+        }}.toString();
+    }
+
+    /**
+     * 计算符合条件的总数量
+     */
+    public String countAdvancedSearch(@Param("filters") List<SearchFilter> filters) {
+        return new SQL() {{
+            SELECT("COUNT(*)");
+            FROM("[Wos_2022]");
+
+            if (filters != null && !filters.isEmpty()) {
+                WHERE(buildDynamicSql(filters));
+            }
+        }}.toString();
+    }
+
+    /**
+     * 简化的批量查询（避免任何排序操作）
+     * 使用TABLESAMPLE来随机采样数据，避免全表扫描
+     */
+    public String advancedSearchSample(@Param("filters") List<SearchFilter> filters,
+                                       @Param("samplePercent") double samplePercent,
+                                       @Param("limit") int limit) {
+        StringBuilder sql = new StringBuilder();
+
+        if (samplePercent > 0 && samplePercent < 100) {
+            sql.append("SELECT TOP ").append(limit).append(" * FROM [Wos_2022] TABLESAMPLE(")
+                    .append(samplePercent).append(" PERCENT)");
+        } else {
+            sql.append("SELECT TOP ").append(limit).append(" * FROM [Wos_2022]");
+        }
+
+        if (filters != null && !filters.isEmpty()) {
+            sql.append(" WHERE ").append(buildDynamicSql(filters));
+        }
+
+        return sql.toString();
     }
 
     private String buildDynamicSql(List<SearchFilter> filters) {
@@ -60,15 +114,15 @@ public class SqlProvider {
         System.out.println("condition:" + condition.toString());
         return condition.toString();
     }
+
     /**
      * 转义 SQL Server 中的特殊字符
      */
     private String escapeSqlServerKeyword(String keyword) {
         if (keyword == null) return "";
-        // 转义 SQL Server 中的特殊字符
-        return keyword.replace("'", "''")           // 单引号转义
-                .replace("[", "[[]")           // 方括号转义
-                .replace("%", "[%]")           // 百分号转义
-                .replace("_", "[_]");          // 下划线转义
+        return keyword.replace("'", "''")
+                .replace("[", "[[]")
+                .replace("%", "[%]")
+                .replace("_", "[_]");
     }
 }

@@ -1,10 +1,10 @@
-/* advancedSearch.css - 修复版本 */
+/* advancedSearch.css - 优化版本 */
 
 .advanced-search-layout {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: white; /* 确保背景是白色 */
+  background-color: #f5f5f5; /* 改为浅灰色背景 */
 }
 
 .advanced-search-header {
@@ -20,24 +20,24 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: #b82e28; /* 只有hero区域有红色背景 */
+  background: linear-gradient(135deg, #b82e28 0%, #991f1b 60%, #f5f5f5 60%); /* 渐变背景，下半部分为浅灰 */
   padding: 0;
   margin: 0;
 }
 
-/* Hero Section */
+/* Hero Section - 缩小红色区域 */
 .search-hero-section {
-  min-height: calc(100vh - 64px - 200px); /* 减去header和footer高度 */
-  background: linear-gradient(135deg, #b82e28 0%, #991f1b 100%);
+  min-height: 60vh; /* 减小高度，只占屏幕60% */
+  background: transparent; /* 使用父级渐变背景 */
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 60px 20px 40px;
   position: relative;
   overflow: hidden;
 }
 
-/* 添加一些视觉效果 */
+/* 添加微妙的视觉效果 */
 .search-hero-section::before {
   content: '';
   position: absolute;
@@ -45,37 +45,38 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-  radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+  background: radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
+  radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
   pointer-events: none;
 }
 
 .container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1000px; /* 稍微缩小容器宽度 */
   margin: 0 auto;
   padding: 0 20px;
   position: relative;
   z-index: 2;
 }
 
-/* 确保SearchInput组件在hero section中居中 */
+/* 搜索组件样式优化 */
 .search-hero-section .search-input-container {
   position: relative;
   z-index: 3;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border-radius: 16px; /* 增加圆角 */
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1); /* 更柔和的阴影 */
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* 移除任何可能的遮罩或覆盖层 */
+/* 确保布局正确 */
 .advanced-search-layout *,
 .advanced-search-layout *::before,
 .advanced-search-layout *::after {
   box-sizing: border-box;
 }
 
-/* 确保没有Spin遮罩 */
+/* 移除Spin遮罩问题 */
 .advanced-search-layout .ant-spin-blur,
 .advanced-search-layout .ant-spin-blur::after,
 .advanced-search-layout .ant-spin-container::after {
@@ -84,7 +85,7 @@
   pointer-events: auto !important;
 }
 
-/* 确保所有交互元素都可以点击 */
+/* 确保交互元素可点击 */
 .advanced-search-layout .ant-select,
 .advanced-search-layout .ant-input,
 .advanced-search-layout .ant-btn {
@@ -93,7 +94,7 @@
   pointer-events: auto !important;
 }
 
-/* 下拉菜单确保在最上层 */
+/* 下拉菜单层级 */
 .ant-select-dropdown {
   z-index: 9999 !important;
 }
@@ -101,21 +102,31 @@
 /* 响应式调整 */
 @media (max-width: 768px) {
   .search-hero-section {
-    min-height: calc(100vh - 64px - 150px);
-    padding: 20px 10px;
+    min-height: 50vh;
+    padding: 40px 15px 30px;
   }
 
   .container {
-    padding: 0 10px;
+    padding: 0 15px;
+    max-width: 95%;
+  }
+
+  .search-hero-section .search-input-container {
+    border-radius: 12px;
   }
 }
 
 @media (max-width: 480px) {
   .search-hero-section {
-    padding: 15px 5px;
+    min-height: 45vh;
+    padding: 30px 10px 20px;
   }
 
   .container {
-    padding: 0 5px;
+    padding: 0 10px;
+  }
+
+  .search-hero-section .search-input-container {
+    border-radius: 8px;
   }
 }

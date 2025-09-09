@@ -71,6 +71,11 @@ const SearchInput = () => {
     }
   };
 
+  // Toggle advanced search visibility
+  const handleToggleAdvanced = () => {
+    setShowAdvanced(!showAdvanced);
+  };
+
   // Submit search request
   const handleSearch = async () => {
     // Validate inputs
@@ -164,31 +169,35 @@ const SearchInput = () => {
             </Button>
           </div>
 
-          {/* 操作按钮行 */}
+          {/* 简化的操作按钮行 */}
           <div className="action-buttons-row">
-            <Button
-                type="link"
-                icon={showAdvanced ? <UpOutlined /> : <DownOutlined />}
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                disabled={loading}
-                className="toggle-button"
-            >
-              {showAdvanced ? '收起高级选项' : '展开高级选项'}
-            </Button>
+            {searchFilter.length === 1 && (
+                <Button
+                    type="link"
+                    icon={<PlusOutlined />}
+                    onClick={handleAddFilter}
+                    disabled={loading}
+                    className="add-button"
+                >
+                  添加条件
+                </Button>
+            )}
 
-            <Button
-                type="link"
-                icon={<PlusOutlined />}
-                onClick={handleAddFilter}
-                disabled={loading}
-                className="add-button"
-            >
-              添加搜索条件
-            </Button>
+            {searchFilter.length > 1 && (
+                <Button
+                    type="link"
+                    icon={showAdvanced ? <UpOutlined /> : <DownOutlined />}
+                    onClick={handleToggleAdvanced}
+                    disabled={loading}
+                    className="toggle-button"
+                >
+                  {showAdvanced ? '收起高级选项' : '展开高级选项'}
+                </Button>
+            )}
           </div>
 
-          {/* 高级搜索区域 */}
-          {(showAdvanced || searchFilter.length > 1) && (
+          {/* 高级搜索区域 - 只在有多个条件且展开时显示 */}
+          {searchFilter.length > 1 && showAdvanced && (
               <div className="advanced-section">
                 <Divider>
                   <Text type="secondary">高级搜索选项</Text>
@@ -205,7 +214,7 @@ const SearchInput = () => {
                     />
                 ))}
 
-                {/* 高级操作按钮 */}
+                {/* 简化的高级操作按钮 */}
                 <div className="advanced-actions">
                   <Button
                       type="dashed"
@@ -217,24 +226,13 @@ const SearchInput = () => {
                     添加条件
                   </Button>
 
-                  <Space>
-                    <Button
-                        icon={<ClearOutlined />}
-                        onClick={handleClearAll}
-                        disabled={loading}
-                    >
-                      清空所有
-                    </Button>
-                    <Button
-                        type="primary"
-                        icon={<SearchOutlined />}
-                        onClick={handleSearch}
-                        loading={loading}
-                        className="execute-search-btn"
-                    >
-                      执行搜索
-                    </Button>
-                  </Space>
+                  <Button
+                      icon={<ClearOutlined />}
+                      onClick={handleClearAll}
+                      disabled={loading}
+                  >
+                    清空所有
+                  </Button>
                 </div>
               </div>
           )}
@@ -242,7 +240,7 @@ const SearchInput = () => {
           {/* 搜索提示 */}
           <div className="search-tips">
             <Text type="secondary">
-              搜索提示：Topic包含标题和关键词 | 支持AND/OR逻辑组合 | 年份支持范围查询(如:2020-2023) | 未指定年份时默认搜索2020年数据
+              搜索提示：Topic包含标题和关键词 | 支持AND/OR逻辑组合 | 年份仅支持单年份查询 | 未指定年份时默认搜索2020年数据
             </Text>
           </div>
         </div>

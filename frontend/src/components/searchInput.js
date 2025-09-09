@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Flex, Select, Input, Button, Divider, Tabs, Space, message, Spin } from 'antd';
-import { PlusOutlined, SearchOutlined, ClearOutlined, UserOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Flex, Select, Input, Button, Divider, Space, message, Typography } from 'antd';
+import { PlusOutlined, SearchOutlined, ClearOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import '../styles/searchInput.css';
 import ConditionRow from "./conditionRow";
 
 const { Option } = Select;
-const { TabPane } = Tabs;
+const { Text } = Typography;
 
 const SearchInput = () => {
   const navigate = useNavigate();
@@ -15,25 +15,34 @@ const SearchInput = () => {
   const [searchFilter, setSearchFilter] = useState([
     { id: 1, selects: ['AND', 1], input: '' }
   ]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Add a new search condition
   const handleAddFilter = () => {
     const newId = searchFilter.length + 1;
     setSearchFilter([...searchFilter, { id: newId, selects: ['AND', 1], input: '' }]);
+    setShowAdvanced(true);
   };
 
   // Clear all search conditions
   const handleClearAll = () => {
     setSearchFilter([{ id: 1, selects: ['AND', 1], input: '' }]);
+    setShowAdvanced(false);
   };
 
   // Delete a search condition
   const handleDeleteFilter = (filterId) => {
+    if (searchFilter.length === 1) return;
+
     const updatedFilters = searchFilter.filter(filter => filter.id !== filterId);
     const reassignedFilters = updatedFilters.map((filter, index) => (
         { ...filter, id: index + 1 }
     ));
     setSearchFilter(reassignedFilters);
+
+    if (reassignedFilters.length === 1) {
+      setShowAdvanced(false);
+    }
   };
 
   // Update select value
@@ -55,6 +64,13 @@ const SearchInput = () => {
     ));
   };
 
+  // Handle Enter key press
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !loading) {
+      handleSearch();
+    }
+  };
+
   // Submit search request
   const handleSearch = async () => {
     // Validate inputs
@@ -73,11 +89,18 @@ const SearchInput = () => {
       );
 
       const paperInfo = response.data;
+
+      if (paperInfo.length >= 500) {
+        message.success(`搜索完成，当前显示前 500 条结果`);
+      } else {
+        message.success(`找到 ${paperInfo.length} 篇文献`);
+      }
+
       // 传递搜索条件和结果到搜索结果页面
-      navigate("/SearchResult", {
+      navigate("/searchResult", {
         state: {
           paperInfo,
-          searchFilter // 新增：传递搜索条件
+          searchFilter
         }
       });
     } catch (error) {
@@ -94,48 +117,84 @@ const SearchInput = () => {
 
   return (
       <div className="search-input-container">
-        {/* Title section - now separate from tabs */}
+        {/* 标题区域 */}
         <div className="search-title">
-          <h1 style={{ color: '#b82e28' }}>高级检索</h1>
-          <p style={{ color: '#666' }}>使用多个条件组合，精确查找您需要的文献</p>
+          <h1>文献检索</h1>
+          <p>支持多条件组合搜索，精确查找您需要的文献</p>
         </div>
 
-        {/* Tabs section - now below the title */}
-        <Tabs
-            defaultActiveKey="1"
-            type="card"
-            size="large"
-            className="search-tabs"
-        >
-          <TabPane
-              tab={<span><FileTextOutlined />文献检索</span>}
-              key="1"
-          >
-            <Spin spinning={loading}>
-              <div className="search-panel">
-                {/* 首行搜索条件 */}
-                <div className="default-search">
-                  <Select
-                      style={{width: '40%', marginRight: '1%'}}
-                      value={searchFilter[0].selects[1]}
-                      onChange={(value) => handleSelectChange(1, 1, value)}
-                  >
-                    <Option value={1}>Topic</Option>
-                    <Option value={2}>Title</Option>
-                    <Option value={3}>Author</Option>
-                    <Option value={4}>Publication/Source Titles</Option>
-                    <Option value={5}>Year Published</Option>
-                    <Option value={6}>DOI</Option>
-                  </Select>
-                  <Input
-                      placeholder="输入关键词..."
-                      style={{width: '60%'}}
-                      value={searchFilter[0].input}
-                      onChange={(e) => handleInputChange(1, e.target.value)}
-                  />
-                </div>
+        {/* 搜索面板 */}
+        <div className="search-panel">
+          {/* 主搜索框 */}
+          <div className="main-search-row">
+            <Select
+                className="field-select"
+                value={searchFilter[0].selects[1]}
+                onChange={(value) => handleSelectChange(1, 1, value)}
+                size="large"
+                disabled={loading}
+            >
+              <Option value={1}>Topic</Option>
+              <Option value={2}>Title</Option>
+              <Option value={3}>Author</Option>
+              <Option value={4}>Publication/Source Titles</Option>
+              <Option value={5}>Year Published</Option>
+              <Option value={6}>DOI</Option>
+            </Select>
 
-                {/* 其他搜索条件 */}
+            <Input
+                className="search-input"
+                placeholder="输入关键词..."
+                value={searchFilter[0].input}
+                onChange={(e) => handleInputChange(1, e.target.value)}
+                onKeyDown={handleKeyDown}
+                size="large"
+                disabled={loading}
+            />
+
+            <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                onClick={handleSearch}
+                loading={loading}
+                className="search-button"
+                size="large"
+            >
+              搜索
+            </Button>
+          </div>
+
+          {/* 操作按钮行 */}
+          <div className="action-buttons-row">
+            <Button
+                type="link"
+                icon={showAdvanced ? <UpOutlined /> : <DownOutlined />}
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                disabled={loading}
+                className="toggle-button"
+            >
+              {showAdvanced ? '收起高级选项' : '展开高级选项'}
+            </Button>
+
+            <Button
+                type="link"
+                icon={<PlusOutlined />}
+                onClick={handleAddFilter}
+                disabled={loading}
+                className="add-button"
+            >
+              添加搜索条件
+            </Button>
+          </div>
+
+          {/* 高级搜索区域 */}
+          {(showAdvanced || searchFilter.length > 1) && (
+              <div className="advanced-section">
+                <Divider>
+                  <Text type="secondary">高级搜索选项</Text>
+                </Divider>
+
+                {/* 额外搜索条件 */}
                 {searchFilter.slice(1).map(filter => (
                     <ConditionRow
                         key={filter.id}
@@ -146,14 +205,14 @@ const SearchInput = () => {
                     />
                 ))}
 
-                <Divider style={{ margin: '16px 0' }} />
-
-                <Flex className="action-buttons" justify="space-between">
+                {/* 高级操作按钮 */}
+                <div className="advanced-actions">
                   <Button
                       type="dashed"
                       icon={<PlusOutlined />}
                       onClick={handleAddFilter}
-                      style={{ borderColor: '#b82e28', color: '#b82e28' }}
+                      disabled={loading}
+                      className="add-condition-btn"
                   >
                     添加条件
                   </Button>
@@ -162,33 +221,31 @@ const SearchInput = () => {
                     <Button
                         icon={<ClearOutlined />}
                         onClick={handleClearAll}
+                        disabled={loading}
                     >
-                      清空
+                      清空所有
                     </Button>
                     <Button
                         type="primary"
                         icon={<SearchOutlined />}
                         onClick={handleSearch}
-                        style={{ background: '#b82e28' }}
+                        loading={loading}
+                        className="execute-search-btn"
                     >
-                      搜索
+                      执行搜索
                     </Button>
                   </Space>
-                </Flex>
+                </div>
               </div>
-            </Spin>
-          </TabPane>
+          )}
 
-          <TabPane
-              tab={<span><UserOutlined />作者检索</span>}
-              key="2"
-          >
-            <div className="coming-soon">
-              <h3>作者检索功能即将上线</h3>
-              <p>请使用文献检索功能并选择"作者"字段进行搜索</p>
-            </div>
-          </TabPane>
-        </Tabs>
+          {/* 搜索提示 */}
+          <div className="search-tips">
+            <Text type="secondary">
+              搜索提示：Topic包含标题和关键词 | 支持AND/OR逻辑组合 | 年份支持范围查询(如:2020-2023) | 未指定年份时默认搜索2020年数据
+            </Text>
+          </div>
+        </div>
       </div>
   );
 };

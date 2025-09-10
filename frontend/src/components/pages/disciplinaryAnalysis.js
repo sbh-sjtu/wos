@@ -89,7 +89,7 @@ function DisciplinaryAnalysis() {
                 startDate,
                 endDate
             }, {
-                timeout: 60000 // 60秒超时
+                timeout: 3000000 // 300秒超时
             });
 
             if (response.status === 200) {

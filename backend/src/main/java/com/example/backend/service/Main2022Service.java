@@ -7,7 +7,7 @@ import java.util.function.BiConsumer;
 
 public interface Main2022Service {
     /**
-     * 高级搜索（限制500条）
+     * 高级搜索（限制200条）
      */
     List<main2022> advancedSearch(List<SearchFilter> filters);
 

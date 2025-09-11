@@ -95,8 +95,8 @@ const SearchInput = () => {
 
       const paperInfo = response.data;
 
-      if (paperInfo.length >= 500) {
-        message.success(`搜索完成，当前显示前 500 条结果`);
+      if (paperInfo.length >= 200) {
+        message.success(`搜索完成，当前显示前 200 条结果`);
       } else {
         message.success(`找到 ${paperInfo.length} 篇文献`);
       }

@@ -15,7 +15,7 @@ public class SqlProvider {
     public String disciplinaryAnalysisSearchMultiTable(@Param("filters") List<SearchFilter> filters,
                                                        @Param("tableNames") List<String> tableNames) {
         if (tableNames == null || tableNames.isEmpty()) {
-            return "SELECT * FROM [Wos_2022] WHERE 1=0"; // 返回空结果
+            return "SELECT * FROM [Wos_2020] WHERE 1=0"; // 返回空结果
         }
 
         StringBuilder sql = new StringBuilder();
@@ -59,9 +59,7 @@ public class SqlProvider {
         return sql.toString();
     }
 
-    /**
-     * 构建学科分析的字段条件 - 修复版本，移除不存在的字段
-     */
+
     private String buildDisciplinaryColumnCondition(SearchFilter filter) {
         String keyword = filter.getInput();
         keyword = escapeSqlServerKeyword(keyword);
@@ -69,12 +67,13 @@ public class SqlProvider {
         System.out.println("学科分析关键词:" + keyword);
         StringBuilder condition = new StringBuilder();
 
-        // 只使用确认存在的字段，移除abstract_text等可能不存在的字段
         if ("1".equals(filter.getSelects().get(1).toString())) {
-            // Topic搜索：只在确认存在的核心字段中搜索
+            // Topic搜索：在所有相关字段中搜索，包括摘要
             condition.append("(")
                     .append("keyword LIKE '%").append(keyword).append("%' OR ")
-                    .append("article_title LIKE '%").append(keyword).append("%'")
+                    .append("article_title LIKE '%").append(keyword).append("%' OR ")
+                    .append("abstract_text LIKE '%").append(keyword).append("%' OR ")
+                    .append("subject_extended LIKE '%").append(keyword).append("%'")
                     .append(")");
         } else if ("2".equals(filter.getSelects().get(1).toString())) {
             condition.append("article_title LIKE '%").append(keyword).append("%'");
@@ -95,16 +94,16 @@ public class SqlProvider {
     // ==================== 保持原有的所有方法不变 ====================
 
     /**
-     * 动态多表高级搜索（限制500条）
+     * 动态多表高级搜索（限制200条）
      */
     public String advancedSearchMultiTable(@Param("filters") List<SearchFilter> filters,
                                            @Param("tableNames") List<String> tableNames) {
         if (tableNames == null || tableNames.isEmpty()) {
-            return "SELECT TOP 500 * FROM [Wos_2022] WHERE 1=0";
+            return "SELECT TOP 200 * FROM [Wos_2020] WHERE 1=0";
         }
 
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT TOP 500 * FROM (");
+        sql.append("SELECT TOP 200 * FROM (");
 
         for (int i = 0; i < tableNames.size(); i++) {
             if (i > 0) {
@@ -129,7 +128,7 @@ public class SqlProvider {
     public String advancedSearchAllMultiTable(@Param("filters") List<SearchFilter> filters,
                                               @Param("tableNames") List<String> tableNames) {
         if (tableNames == null || tableNames.isEmpty()) {
-            return "SELECT * FROM [Wos_2022] WHERE 1=0";
+            return "SELECT * FROM [Wos_2020] WHERE 1=0";
         }
 
         StringBuilder sql = new StringBuilder();
@@ -189,7 +188,7 @@ public class SqlProvider {
                                                  @Param("samplePercent") double samplePercent,
                                                  @Param("limit") int limit) {
         if (tableNames == null || tableNames.isEmpty()) {
-            return "SELECT TOP " + limit + " * FROM [Wos_2022] WHERE 1=0";
+            return "SELECT TOP " + limit + " * FROM [Wos_2020] WHERE 1=0";
         }
 
         StringBuilder sql = new StringBuilder();
@@ -222,8 +221,8 @@ public class SqlProvider {
      */
     public String advancedSearch(@Param("filters") List<SearchFilter> filters) {
         return new SQL() {{
-            SELECT("TOP 500 *");
-            FROM("[Wos_2022]");
+            SELECT("TOP 200 *");
+            FROM("[Wos_2020]");
 
             if (filters != null && !filters.isEmpty()) {
                 WHERE(buildDynamicSql(filters));
@@ -234,7 +233,7 @@ public class SqlProvider {
     public String advancedSearchAll(@Param("filters") List<SearchFilter> filters) {
         return new SQL() {{
             SELECT("*");
-            FROM("[Wos_2022]");
+            FROM("[Wos_2020]");
 
             if (filters != null && !filters.isEmpty()) {
                 WHERE(buildDynamicSql(filters));
@@ -245,7 +244,7 @@ public class SqlProvider {
     public String countAdvancedSearch(@Param("filters") List<SearchFilter> filters) {
         return new SQL() {{
             SELECT("COUNT(*)");
-            FROM("[Wos_2022]");
+            FROM("[Wos_2020]");
 
             if (filters != null && !filters.isEmpty()) {
                 WHERE(buildDynamicSql(filters));
@@ -259,10 +258,10 @@ public class SqlProvider {
         StringBuilder sql = new StringBuilder();
 
         if (samplePercent > 0 && samplePercent < 100) {
-            sql.append("SELECT TOP ").append(limit).append(" * FROM [Wos_2022] TABLESAMPLE(")
+            sql.append("SELECT TOP ").append(limit).append(" * FROM [Wos_2020] TABLESAMPLE(")
                     .append(samplePercent).append(" PERCENT)");
         } else {
-            sql.append("SELECT TOP ").append(limit).append(" * FROM [Wos_2022]");
+            sql.append("SELECT TOP ").append(limit).append(" * FROM [Wos_2020]");
         }
 
         if (filters != null && !filters.isEmpty()) {
@@ -272,9 +271,6 @@ public class SqlProvider {
         return sql.toString();
     }
 
-    /**
-     * 构建动态SQL条件（原有方法）
-     */
     private String buildDynamicSql(List<SearchFilter> filters) {
         StringBuilder sql = new StringBuilder();
         boolean isFirst = true;
@@ -292,9 +288,6 @@ public class SqlProvider {
         return sql.toString();
     }
 
-    /**
-     * 构建字段条件（原有方法）
-     */
     private String buildColumnCondition(SearchFilter filter) {
         String keyword = filter.getInput();
         keyword = escapeSqlServerKeyword(keyword);
@@ -303,8 +296,10 @@ public class SqlProvider {
         StringBuilder condition = new StringBuilder();
 
         if ("1".equals(filter.getSelects().get(1).toString())) {
+            // Topic搜索
             condition.append("(keyword LIKE '%")
-                    .append(keyword).append("%' OR article_title LIKE '%").append(keyword).append("%')");
+                    .append(keyword).append("%' OR article_title LIKE '%").append(keyword)
+                    .append("%' OR abstract_text LIKE '%").append(keyword).append("%')");
         } else if ("2".equals(filter.getSelects().get(1).toString())) {
             condition.append("article_title LIKE '%").append(keyword).append("%'");
         } else if ("3".equals(filter.getSelects().get(1).toString())) {

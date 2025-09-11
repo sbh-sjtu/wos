@@ -91,7 +91,7 @@ function DetailCard({ paperInfo }) {
             const regex = /\[(.*?)\](.*?)(?=\[|$)/g;
             let match;
             while ((match = regex.exec(paperInfo.address)) !== null) {
-                const authorsArr = match[1].split(/;|,/).map(a => a.trim()).filter(Boolean);
+                const authorsArr = match[1].split(';').map(a => a.trim()).filter(Boolean);
                 const fullInstitution = match[2].trim().replace(/;$/, '');
 
                 // 机构名：第一个逗号前
@@ -108,7 +108,7 @@ function DetailCard({ paperInfo }) {
             }
 
             institutionInfo = Array.from(institutionMap.entries())
-                .map(([inst, authorSet]) => `${inst} ： ${Array.from(authorSet).join(', ')}`)
+                .map(([inst, authorSet]) => `${inst} ： ${Array.from(authorSet).join('; ')}`)
                 .join('\n');
         }
 
@@ -288,7 +288,7 @@ function DetailCard({ paperInfo }) {
                                                     wordBreak: 'break-word',
                                                     whiteSpace: 'pre-wrap'
                                                 }}>
-                                                    {country} ： {Array.from(authorSet).join(', ')}
+                                                    {country} ： {Array.from(authorSet).join('; ')}
                                                 </Text>
                                             </div>
                                         );
@@ -363,9 +363,8 @@ function DetailCard({ paperInfo }) {
                         }}
                         className="abstract-content"
                     >
-                        {paperInfo.abstract_text ?
-                            renderHtmlContent(paperInfo.abstract_text) :
-                            "暂无摘要信息"
+                        {
+                            renderHtmlContent(paperInfo.abstract_text ||"暂无摘要信息" )
                         }
                     </Paragraph>
                 </Card>
@@ -430,7 +429,7 @@ function DetailCard({ paperInfo }) {
                             <div className="info-item">
                                 <Text strong className="info-label">文献类型：</Text>
                                 <Tag color="green">
-                                    {paperInfo.article_type || "不明确"}
+                                    {paperInfo.article_type || "期刊论文"}
                                 </Tag>
                             </div>
                         </Card>

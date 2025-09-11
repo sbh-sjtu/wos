@@ -35,7 +35,7 @@ public class Main2022Controller {
     }
 
     /**
-     * 高级搜索接口（限制500条）
+     * 高级搜索接口（限制200条）
      * 现在作为统一的搜索入口，支持全文搜索和高级搜索
      */
     @PostMapping(value = "/advancedSearch")

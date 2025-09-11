@@ -19,6 +19,7 @@ function DisciplinaryAnalysis() {
     const [loading, setLoading] = useState(false);
     const [progress, setProgress] = useState(0);
     const [error, setError] = useState(null);
+    const [statusMessage, setStatusMessage] = useState('');
 
     // 更新关键词input
     const onKeywordChange = (e) => {
@@ -30,27 +31,43 @@ function DisciplinaryAnalysis() {
         setDateRange(dateStrings);
     };
 
-    // 模拟进度更新
+    // 改进的进度更新 - 更加详细的状态说明
     const updateProgress = () => {
-        const steps = [10, 30, 50, 70, 85, 95, 100];
-        const messages = [
-            '正在连接Elasticsearch...',
-            '正在搜索相关文献...',
-            '正在分析年度趋势...',
-            '正在处理国家分布数据...',
-            '正在分析作者和机构信息...',
-            '正在生成可视化图表...',
-            '分析完成！'
+        const steps = [
+            { percent: 5, message: '正在初始化分析任务...', duration: 1000 },
+            { percent: 15, message: '正在连接数据库...', duration: 2000 },
+            { percent: 25, message: '正在查询相关文献数据...', duration: 3000 },
+            { percent: 35, message: '正在处理多年份数据...', duration: 4000 },
+            { percent: 50, message: '正在分析年度发展趋势...', duration: 2000 },
+            { percent: 65, message: '正在处理国家和地区分布...', duration: 2000 },
+            { percent: 75, message: '正在分析作者和机构信息...', duration: 2000 },
+            { percent: 85, message: '正在处理期刊和关键词数据...', duration: 2000 },
+            { percent: 95, message: '正在生成可视化图表...', duration: 1000 },
+            { percent: 100, message: '分析完成！', duration: 500 }
         ];
 
-        steps.forEach((step, index) => {
-            setTimeout(() => {
-                setProgress(step);
-                if (index < messages.length - 1) {
-                    message.info(messages[index]);
+        let currentStep = 0;
+
+        const updateStep = () => {
+            if (currentStep < steps.length) {
+                const step = steps[currentStep];
+                setProgress(step.percent);
+                setStatusMessage(step.message);
+
+                // 显示消息提示（前几步显示info，后面的步骤不显示以免过于频繁）
+                if (currentStep < 6) {
+                    message.info(step.message, 2);
                 }
-            }, index * 800);
-        });
+
+                currentStep++;
+
+                // 为最后几步设置更长的延迟，因为数据处理可能需要更多时间
+                const delay = currentStep > 6 ? step.duration * 1.5 : step.duration;
+                setTimeout(updateStep, delay);
+            }
+        };
+
+        updateStep();
     };
 
     // 提交数据
@@ -75,10 +92,19 @@ function DisciplinaryAnalysis() {
             return;
         }
 
+        // 提醒用户大范围查询可能需要较长时间
+        const yearRange = end - start + 1;
+        if (yearRange > 5) {
+            message.info(`您查询的年份跨度较大（${yearRange}年），分析可能需要较长时间，请耐心等待...`, 5);
+        } else if (yearRange > 2) {
+            message.info(`正在分析${yearRange}年的数据，请稍候...`, 3);
+        }
+
         setLoading(true);
         setProgress(0);
         setError(null);
         setAnalysisData(null);
+        setStatusMessage('正在启动分析...');
 
         // 开始进度更新
         updateProgress();
@@ -89,43 +115,57 @@ function DisciplinaryAnalysis() {
                 startDate,
                 endDate
             }, {
-                timeout: 3000000 // 300秒超时
+                timeout: 600000, // 增加到10分钟超时
+                onUploadProgress: (progressEvent) => {
+                    // 上传进度
+                    console.log('Upload progress:', progressEvent);
+                },
+                // 添加请求拦截器来显示更详细的状态
+                validateStatus: function (status) {
+                    return status >= 200 && status < 300; // 默认的
+                }
             });
 
             if (response.status === 200) {
                 if (response.data.error) {
                     setError(response.data.error);
-                    message.error(response.data.error);
+                    message.error(response.data.error, 5);
                 } else if (response.data.message) {
-                    message.warning(response.data.message);
+                    message.warning(response.data.message, 4);
                     setAnalysisData(response.data);
                 } else {
-                    message.success('分析完成！');
+                    message.success('分析完成！', 3);
                     setAnalysisData(response.data);
                 }
                 setProgress(100);
+                setStatusMessage('分析完成！');
             } else {
                 throw new Error(`服务器响应错误: ${response.status}`);
             }
         } catch (error) {
             console.error('Error submitting data:', error);
             setProgress(0);
+            setStatusMessage('');
 
+            // 更详细的错误处理
             if (error.code === 'ECONNABORTED') {
-                setError('请求超时，请检查网络连接或稍后重试');
-                message.error('请求超时，请稍后重试');
+                setError('分析超时，这可能是因为数据量较大或查询条件复杂。请尝试：1. 缩小年份范围；2. 使用更具体的关键词；3. 稍后重试');
+                message.error('分析超时，请尝试缩小查询范围或稍后重试', 6);
             } else if (error.response?.status >= 500) {
-                setError('服务器内部错误，请稍后重试');
-                message.error('服务器内部错误，请稍后重试');
+                setError('服务器处理超时或内部错误，请稍后重试');
+                message.error('服务器处理超时，请稍后重试', 5);
             } else if (error.response?.status === 400) {
-                setError('请求参数错误，请检查输入');
-                message.error('请求参数错误，请检查输入');
+                setError('请求参数错误，请检查输入的关键词和年份范围');
+                message.error('请求参数错误，请检查输入', 4);
             } else if (error.message.includes('Network Error')) {
-                setError('网络连接错误，请检查服务是否启动');
-                message.error('网络连接错误，请检查后端服务是否启动');
+                setError('网络连接错误，请检查网络连接或后端服务状态');
+                message.error('网络连接错误，请检查后端服务是否启动', 5);
+            } else if (error.response?.status === 504) {
+                setError('服务器网关超时，数据处理时间过长，请尝试缩小查询范围');
+                message.error('处理超时，请尝试缩小查询范围', 6);
             } else {
                 setError('分析失败: ' + (error.message || '未知错误'));
-                message.error('分析失败，请稍后重试');
+                message.error('分析失败，请稍后重试', 4);
             }
         } finally {
             setLoading(false);
@@ -243,7 +283,7 @@ function DisciplinaryAnalysis() {
                                     </Col>
                                 </Row>
 
-                                {/* 进度条 */}
+                                {/* 优化的进度显示 */}
                                 {loading && (
                                     <div style={{ marginBottom: '20px' }}>
                                         <Progress
@@ -253,11 +293,39 @@ function DisciplinaryAnalysis() {
                                                 '0%': '#b82e28',
                                                 '100%': '#ff7875',
                                             }}
+                                            showInfo={true}
+                                            format={() => `${progress}%`}
                                         />
-                                        <Text style={{ marginTop: '8px', display: 'block', textAlign: 'center', color: '#666' }}>
-                                            正在分析数据，请稍候...
-                                        </Text>
+                                        <div style={{
+                                            marginTop: '12px',
+                                            textAlign: 'center',
+                                            padding: '8px 16px',
+                                            backgroundColor: '#f6f8fa',
+                                            borderRadius: '6px',
+                                            border: '1px solid #e1e8ed'
+                                        }}>
+                                            <Text strong style={{ color: '#b82e28', fontSize: '14px' }}>
+                                                {statusMessage}
+                                            </Text>
+                                            <br />
+                                            <Text style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                                分析可能需要数分钟时间，请耐心等待...
+                                            </Text>
+                                        </div>
                                     </div>
+                                )}
+
+                                {/* 查询提示 */}
+                                {!loading && (
+                                    <Alert
+                                        message="查询提示"
+                                        description="• 大范围年份查询（5年以上）可能需要较长时间（2-5分钟）
+                                                   • 建议使用具体的关键词以获得更精确的结果
+                                                   • 如遇超时，请尝试缩小年份范围或使用更具体的关键词"
+                                        type="info"
+                                        showIcon
+                                        style={{ marginBottom: '20px' }}
+                                    />
                                 )}
 
                                 <div style={{ textAlign: 'center', marginTop: '20px' }}>
@@ -270,8 +338,10 @@ function DisciplinaryAnalysis() {
                                         style={{
                                             background: loading ? '#ccc' : '#b82e28',
                                             borderColor: loading ? '#ccc' : '#b82e28',
-                                            minWidth: '120px',
-                                            height: '40px'
+                                            minWidth: '140px',
+                                            height: '42px',
+                                            fontSize: '16px',
+                                            fontWeight: '600'
                                         }}
                                         disabled={loading}
                                     >

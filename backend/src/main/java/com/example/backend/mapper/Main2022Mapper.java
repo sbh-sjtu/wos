@@ -54,7 +54,7 @@ public interface Main2022Mapper {
     // ==================== 保留原有方法（向后兼容） ====================
 
     /**
-     * 高级搜索（限制500条）- 单表版本
+     * 高级搜索（限制200条）- 单表版本
      */
     @SelectProvider(type = SqlProvider.class, method = "advancedSearch")
     List<main2022> advancedSearch(@Param("filters") List<SearchFilter> filters);

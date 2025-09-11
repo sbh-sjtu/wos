@@ -228,8 +228,8 @@ function SearchResult() {
             setCurrentPage(1);
             setSearchParams({ page: '1' });
 
-            if (newPaperInfo.length >= 500) {
-                message.success(`搜索完成，当前显示前 500 条结果`);
+            if (newPaperInfo.length >= 200) {
+                message.success(`搜索完成，当前显示前 200 条结果`);
             } else {
                 message.success(`找到 ${newPaperInfo.length} 篇文献`);
             }

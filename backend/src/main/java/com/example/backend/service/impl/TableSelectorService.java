@@ -13,7 +13,7 @@ import java.util.stream.IntStream;
 public class TableSelectorService {
 
     // 扩展支持的年份范围
-    private static final int MIN_YEAR = 1970;
+    private static final int MIN_YEAR = 1950;
     private static final int MAX_YEAR = 2020;
 
     /**

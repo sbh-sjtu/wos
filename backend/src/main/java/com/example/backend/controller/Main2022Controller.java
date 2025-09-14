@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,7 +19,7 @@ import java.util.Map;
 
 /**
  * Controller for main2022（支持动态多表查询）
- * 已移除Elasticsearch相关功能，统一使用数据库查询
+ * 增强版：支持WOS_UID、DOI、Title的单条查询
  */
 @RestController
 @RequestMapping("/main2022")
@@ -34,9 +35,194 @@ public class Main2022Controller {
         this.disciplinaryAnalysis = disciplinaryAnalysis;
     }
 
+    // ==================== 新增：单条记录查询接口 ====================
+
     /**
-     * 高级搜索接口（限制200条）
-     * 现在作为统一的搜索入口，支持全文搜索和高级搜索
+     * 根据WOS_UID获取文献详情
+     * URL格式: /main2022/detail/{wosUid}
+     * 例如: /main2022/detail/WOS:000123456789
+     */
+    @GetMapping("/detail/{wosUid}")
+    public ResponseEntity<Map<String, Object>> getPaperDetailByWosUid(@PathVariable String wosUid) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // URL解码（处理特殊字符如冒号）
+            String decodedWosUid = URLDecoder.decode(wosUid, "UTF-8");
+            System.out.println("查询WOS_UID: " + decodedWosUid);
+
+            // 记录查询时间
+            long startTime = System.currentTimeMillis();
+
+            // 调用Service层查询
+            Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
+            main2022 paper = serviceImpl.findByWosUid(decodedWosUid);
+
+            long queryTime = System.currentTimeMillis() - startTime;
+
+            if (paper != null) {
+                response.put("success", true);
+                response.put("data", paper);
+                response.put("queryTime", queryTime + "ms");
+                response.put("message", "查询成功");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "未找到WOS_UID为 " + decodedWosUid + " 的文献");
+                response.put("data", null);
+                response.put("queryTime", queryTime + "ms");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+
+        } catch (Exception e) {
+            System.err.println("查询文献详情失败: " + e.getMessage());
+            e.printStackTrace();
+
+            response.put("success", false);
+            response.put("error", "查询失败: " + e.getMessage());
+            response.put("data", null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * 根据DOI获取文献详情
+     * URL格式: /main2022/detail/doi?value={doi}
+     */
+    @GetMapping("/detail/doi")
+    public ResponseEntity<Map<String, Object>> getPaperDetailByDoi(@RequestParam String value) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            System.out.println("查询DOI: " + value);
+
+            long startTime = System.currentTimeMillis();
+
+            Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
+            main2022 paper = serviceImpl.findByDoi(value);
+
+            long queryTime = System.currentTimeMillis() - startTime;
+
+            if (paper != null) {
+                response.put("success", true);
+                response.put("data", paper);
+                response.put("queryTime", queryTime + "ms");
+                response.put("message", "通过DOI查询成功");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "未找到DOI为 " + value + " 的文献");
+                response.put("data", null);
+                response.put("queryTime", queryTime + "ms");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+
+        } catch (Exception e) {
+            System.err.println("通过DOI查询失败: " + e.getMessage());
+
+            response.put("success", false);
+            response.put("error", "查询失败: " + e.getMessage());
+            response.put("data", null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * 根据标题获取文献详情
+     * URL格式: /main2022/detail/title?value={title}&exact={true/false}
+     */
+    @GetMapping("/detail/title")
+    public ResponseEntity<Map<String, Object>> getPaperDetailByTitle(
+            @RequestParam String value,
+            @RequestParam(defaultValue = "false") boolean exact) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            System.out.println("查询标题: " + value + " (精确匹配: " + exact + ")");
+
+            long startTime = System.currentTimeMillis();
+
+            Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
+            main2022 paper = serviceImpl.findByTitle(value, exact);
+
+            long queryTime = System.currentTimeMillis() - startTime;
+
+            if (paper != null) {
+                response.put("success", true);
+                response.put("data", paper);
+                response.put("queryTime", queryTime + "ms");
+                response.put("message", "通过标题查询成功");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "未找到标题" + (exact ? "等于" : "包含") + " \"" + value + "\" 的文献");
+                response.put("data", null);
+                response.put("queryTime", queryTime + "ms");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+
+        } catch (Exception e) {
+            System.err.println("通过标题查询失败: " + e.getMessage());
+
+            response.put("success", false);
+            response.put("error", "查询失败: " + e.getMessage());
+            response.put("data", null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * 批量获取文献详情
+     * POST /main2022/details/batch
+     * Body: ["WOS:001", "WOS:002", ...]
+     */
+    @PostMapping("/details/batch")
+    public ResponseEntity<Map<String, Object>> getPaperDetailsBatch(@RequestBody List<String> wosUids) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            if (wosUids == null || wosUids.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "WOS_UID列表不能为空");
+                response.put("data", new ArrayList<>());
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            System.out.println("批量查询 " + wosUids.size() + " 个WOS_UID");
+
+            long startTime = System.currentTimeMillis();
+
+            Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
+            List<main2022> papers = serviceImpl.findByWosUids(wosUids);
+
+            long queryTime = System.currentTimeMillis() - startTime;
+
+            response.put("success", true);
+            response.put("data", papers);
+            response.put("found", papers.size());
+            response.put("requested", wosUids.size());
+            response.put("queryTime", queryTime + "ms");
+            response.put("message", "找到 " + papers.size() + "/" + wosUids.size() + " 条记录");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("批量查询失败: " + e.getMessage());
+            e.printStackTrace();
+
+            response.put("success", false);
+            response.put("error", "批量查询失败: " + e.getMessage());
+            response.put("data", new ArrayList<>());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // ==================== 原有接口保持不变 ====================
+
+    /**
+     * 高级搜索接口（限制500条）
+     * 现在支持DOI和Title的多表查询
      */
     @PostMapping(value = "/advancedSearch")
     public List<main2022> selectAll(@RequestBody List<SearchFilter> selectInfo) {
@@ -114,7 +300,7 @@ public class Main2022Controller {
             String yearRange = serviceImpl.getSupportedYearRange();
 
             response.put("supportedYearRange", yearRange);
-            response.put("minYear", 1970);
+            response.put("minYear", 1950);
             response.put("maxYear", 2020);
             response.put("defaultYear", 2020);
             response.put("message", "当前支持的年份范围，未指定年份时默认使用2020年");
@@ -162,14 +348,14 @@ public class Main2022Controller {
                 Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
 
                 // 检查是否超出支持范围
-                if (start < 1970 || end > 2020) {
+                if (start < 1950 || end > 2020) {
                     Map<String, Object> warningResponse = new HashMap<>();
                     warningResponse.put("warning", "部分年份超出当前支持范围 " + serviceImpl.getSupportedYearRange() +
                             "，将只查询支持范围内的数据");
                     warningResponse.put("supportedRange", serviceImpl.getSupportedYearRange());
 
                     // 调整年份范围到支持范围内
-                    start = Math.max(start, 1970);
+                    start = Math.max(start, 1950);
                     end = Math.min(end, 2020);
                     startDate = String.valueOf(start);
                     endDate = String.valueOf(end);

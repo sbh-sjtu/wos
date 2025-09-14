@@ -248,14 +248,33 @@ function SearchResult() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // 点击标题跳转详情页
+    // 修改点击标题跳转详情页的函数
     const handleTitleClick = (paper) => {
+        // 保存当前页码到URL
         if (!searchParams.get('page')) {
             setSearchParams({ page: currentPage.toString() });
         }
-        navigate("/detail", {
-            state: { paper }
-        });
+
+        // 新增：使用WOS_UID作为路由参数
+        if (paper.wos_uid) {
+            // 编码WOS_UID以处理特殊字符（如冒号）
+            const encodedWosUid = encodeURIComponent(paper.wos_uid);
+
+            // 导航到新的URL格式，同时传递paper数据以快速显示
+            navigate(`/detail/${encodedWosUid}`, {
+                state: {
+                    paper,
+                    fromSearch: true,  // 标记来源于搜索
+                    searchPage: currentPage  // 记录搜索页码
+                }
+            });
+        } else {
+            // 如果没有wos_uid，使用旧的导航方式
+            console.warn('文献缺少wos_uid，使用旧导航方式');
+            navigate("/detail", {
+                state: { paper }
+            });
+        }
     };
 
     // 显示下载选项模态框

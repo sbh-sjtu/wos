@@ -10,6 +10,50 @@ import java.util.List;
 @Mapper
 public interface Main2022Mapper {
 
+    // ==================== 新增：单表精确查询方法 ====================
+
+    /**
+     * 根据WOS_UID查询单条记录（利用主键索引）
+     */
+    @Select("SELECT * FROM [${tableName}] WHERE wos_uid = #{wosUid}")
+    main2022 findByWosUidInTable(@Param("tableName") String tableName,
+                                 @Param("wosUid") String wosUid);
+
+    /**
+     * 根据DOI查询单条记录
+     */
+    @Select("SELECT TOP 1 * FROM [${tableName}] WHERE identifier_doi = #{doi}")
+    main2022 findByDoiInTable(@Param("tableName") String tableName,
+                              @Param("doi") String doi);
+
+    /**
+     * 根据标题精确查询
+     */
+    @Select("SELECT TOP 1 * FROM [${tableName}] WHERE article_title = #{title}")
+    main2022 findByTitleExactInTable(@Param("tableName") String tableName,
+                                     @Param("title") String title);
+
+    /**
+     * 根据标题模糊查询（返回第一条匹配）
+     */
+    @Select("SELECT TOP 1 * FROM [${tableName}] WHERE article_title LIKE '%' + #{title} + '%'")
+    main2022 findByTitleLikeInTable(@Param("tableName") String tableName,
+                                    @Param("title") String title);
+
+    /**
+     * 批量查询WOS_UID
+     */
+    @Select({
+            "<script>",
+            "SELECT * FROM [${tableName}] WHERE wos_uid IN",
+            "<foreach collection='wosUids' item='uid' open='(' separator=',' close=')'>",
+            "#{uid}",
+            "</foreach>",
+            "</script>"
+    })
+    List<main2022> findByWosUidsInTable(@Param("tableName") String tableName,
+                                        @Param("wosUids") List<String> wosUids);
+
     // ==================== 新增：学科分析专用查询方法 ====================
 
     /**
@@ -54,7 +98,7 @@ public interface Main2022Mapper {
     // ==================== 保留原有方法（向后兼容） ====================
 
     /**
-     * 高级搜索（限制200条）- 单表版本
+     * 高级搜索（限制500条）- 单表版本
      */
     @SelectProvider(type = SqlProvider.class, method = "advancedSearch")
     List<main2022> advancedSearch(@Param("filters") List<SearchFilter> filters);

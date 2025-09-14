@@ -72,7 +72,6 @@ public class SqlProvider {
             condition.append("(")
                     .append("keyword LIKE '%").append(keyword).append("%' OR ")
                     .append("article_title LIKE '%").append(keyword).append("%' OR ")
-                    .append("abstract_text LIKE '%").append(keyword).append("%' OR ")
                     .append("subject_extended LIKE '%").append(keyword).append("%'")
                     .append(")");
         } else if ("2".equals(filter.getSelects().get(1).toString())) {

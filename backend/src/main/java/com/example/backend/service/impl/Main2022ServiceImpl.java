@@ -19,6 +19,8 @@ public class Main2022ServiceImpl implements Main2022Service {
 
     // 默认年份设置
     private static final int DEFAULT_YEAR = 2020;
+    private static final int MIN_YEAR = 1950;
+    private static final int MAX_YEAR = 2020;
 
     @Autowired
     public Main2022ServiceImpl(Main2022Mapper main2022Mapper, TableSelectorService tableSelectorService) {
@@ -26,7 +28,305 @@ public class Main2022ServiceImpl implements Main2022Service {
         this.tableSelectorService = tableSelectorService;
     }
 
-    // ==================== 新增：学科分析专用方法 ====================
+    // ==================== 新增：单条记录精确查询方法 ====================
+
+    /**
+     * 根据WOS_UID查询文献（从2020往前查询）
+     */
+    public main2022 findByWosUid(String wosUid) {
+        if (wosUid == null || wosUid.trim().isEmpty()) {
+            return null;
+        }
+
+        System.out.println("开始查询WOS_UID: " + wosUid);
+        long startTime = System.currentTimeMillis();
+        int tablesSearched = 0;
+
+        // 从最新年份开始查询
+        for (int year = MAX_YEAR; year >= MIN_YEAR; year--) {
+            tablesSearched++;
+            String tableName = "Wos_" + year;
+
+            try {
+                long queryStart = System.currentTimeMillis();
+                main2022 result = main2022Mapper.findByWosUidInTable(tableName, wosUid);
+                long queryTime = System.currentTimeMillis() - queryStart;
+
+                if (result != null) {
+                    long totalTime = System.currentTimeMillis() - startTime;
+                    System.out.println(String.format(
+                            "找到文献 - 表: %s, 查询时间: %dms, 搜索了%d个表, 总耗时: %dms",
+                            tableName, queryTime, tablesSearched, totalTime
+                    ));
+                    return result;
+                }
+            } catch (Exception e) {
+                // 表可能不存在，继续查询下一个
+                continue;
+            }
+        }
+
+        System.out.println("未找到文献，搜索了" + tablesSearched + "个表");
+        return null;
+    }
+
+    /**
+     * 根据DOI查询文献（从2020往前查询）
+     */
+    public main2022 findByDoi(String doi) {
+        if (doi == null || doi.trim().isEmpty()) {
+            return null;
+        }
+
+        System.out.println("开始查询DOI: " + doi);
+        long startTime = System.currentTimeMillis();
+        int tablesSearched = 0;
+
+        for (int year = MAX_YEAR; year >= MIN_YEAR; year--) {
+            tablesSearched++;
+            String tableName = "Wos_" + year;
+
+            try {
+                main2022 result = main2022Mapper.findByDoiInTable(tableName, doi);
+
+                if (result != null) {
+                    long totalTime = System.currentTimeMillis() - startTime;
+                    System.out.println(String.format(
+                            "通过DOI找到文献 - 表: %s, 搜索了%d个表, 总耗时: %dms",
+                            tableName, tablesSearched, totalTime
+                    ));
+                    return result;
+                }
+            } catch (Exception e) {
+                continue;
+            }
+        }
+
+        System.out.println("未通过DOI找到文献，搜索了" + tablesSearched + "个表");
+        return null;
+    }
+
+    /**
+     * 根据标题查询文献（从2020往前查询）
+     */
+    public main2022 findByTitle(String title, boolean exactMatch) {
+        if (title == null || title.trim().isEmpty()) {
+            return null;
+        }
+
+        System.out.println("开始查询标题: " + title + " (精确匹配: " + exactMatch + ")");
+        long startTime = System.currentTimeMillis();
+        int tablesSearched = 0;
+
+        for (int year = MAX_YEAR; year >= MIN_YEAR; year--) {
+            tablesSearched++;
+            String tableName = "Wos_" + year;
+
+            try {
+                main2022 result = exactMatch
+                        ? main2022Mapper.findByTitleExactInTable(tableName, title)
+                        : main2022Mapper.findByTitleLikeInTable(tableName, title);
+
+                if (result != null) {
+                    long totalTime = System.currentTimeMillis() - startTime;
+                    System.out.println(String.format(
+                            "通过标题找到文献 - 表: %s, 搜索了%d个表, 总耗时: %dms",
+                            tableName, tablesSearched, totalTime
+                    ));
+                    return result;
+                }
+            } catch (Exception e) {
+                continue;
+            }
+        }
+
+        System.out.println("未通过标题找到文献，搜索了" + tablesSearched + "个表");
+        return null;
+    }
+
+    /**
+     * 批量根据WOS_UID查询文献
+     */
+    public List<main2022> findByWosUids(List<String> wosUids) {
+        if (wosUids == null || wosUids.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<main2022> results = new ArrayList<>();
+        List<String> remainingIds = new ArrayList<>(wosUids);
+
+        for (int year = MAX_YEAR; year >= MIN_YEAR && !remainingIds.isEmpty(); year--) {
+            String tableName = "Wos_" + year;
+
+            try {
+                List<main2022> found = main2022Mapper.findByWosUidsInTable(tableName, remainingIds);
+
+                if (!found.isEmpty()) {
+                    results.addAll(found);
+
+                    // 移除已找到的ID
+                    Set<String> foundIds = found.stream()
+                            .map(main2022::getWos_uid)
+                            .collect(Collectors.toSet());
+                    remainingIds = remainingIds.stream()
+                            .filter(id -> !foundIds.contains(id))
+                            .collect(Collectors.toList());
+
+                    System.out.println("在表 " + tableName + " 中找到 " + found.size() + " 条记录");
+                }
+            } catch (Exception e) {
+                continue;
+            }
+        }
+
+        System.out.println("批量查询完成，找到 " + results.size() + "/" + wosUids.size() + " 条记录");
+        return results;
+    }
+
+    // ==================== 增强的高级搜索（支持DOI和Title的多表查询） ====================
+
+    @Override
+    public List<main2022> advancedSearch(List<SearchFilter> filters) {
+        try {
+            // 检查是否是DOI或Title搜索且没有指定年份
+            if (shouldUseMultiTableSearch(filters)) {
+                System.out.println("检测到DOI/Title搜索且无年份指定，使用多表查询");
+                return advancedSearchAllTables(filters, 500);
+            }
+
+            // 原有逻辑：添加默认年份或使用指定年份
+            List<SearchFilter> processedFilters = addDefaultYearIfNeeded(filters);
+            List<String> tableNames = tableSelectorService.determineTablesFromFilters(processedFilters);
+
+            if (tableNames.isEmpty()) {
+                System.out.println("没有找到匹配的表，使用默认年份" + DEFAULT_YEAR);
+                tableNames = List.of("Wos_" + DEFAULT_YEAR);
+            }
+
+            System.out.println("高级搜索 - 查询表: " + tableNames);
+            return main2022Mapper.advancedSearchMultiTable(processedFilters, tableNames);
+        } catch (Exception e) {
+            System.err.println("多表高级搜索失败: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 判断是否需要使用多表搜索
+     */
+    private boolean shouldUseMultiTableSearch(List<SearchFilter> filters) {
+        if (filters == null || filters.isEmpty()) {
+            return false;
+        }
+
+        // 检查是否有年份过滤
+        boolean hasYearFilter = filters.stream()
+                .anyMatch(filter -> filter.getSelects() != null &&
+                        filter.getSelects().size() > 1 &&
+                        Integer.valueOf(5).equals(filter.getSelects().get(1))); // 5 = Year Published
+
+        // 检查是否是DOI或Title搜索
+        boolean hasDoiOrTitleSearch = filters.stream()
+                .anyMatch(filter -> filter.getSelects() != null &&
+                        filter.getSelects().size() > 1 &&
+                        (Integer.valueOf(2).equals(filter.getSelects().get(1)) || // 2 = Title
+                                Integer.valueOf(6).equals(filter.getSelects().get(1)))); // 6 = DOI
+
+        // 如果是DOI或Title搜索且没有年份过滤，则使用多表搜索
+        return hasDoiOrTitleSearch && !hasYearFilter;
+    }
+
+    /**
+     * 在所有表中进行高级搜索（从2020往前）
+     */
+    private List<main2022> advancedSearchAllTables(List<SearchFilter> filters, int limit) {
+        List<main2022> allResults = new ArrayList<>();
+        int totalFound = 0;
+
+        System.out.println("开始多表顺序搜索（从2020往前）");
+
+        for (int year = MAX_YEAR; year >= MIN_YEAR && totalFound < limit; year--) {
+            String tableName = "Wos_" + year;
+
+            try {
+                // 使用单表查询
+                List<main2022> results = main2022Mapper.advancedSearchMultiTable(
+                        filters,
+                        List.of(tableName)
+                );
+
+                if (!results.isEmpty()) {
+                    int toAdd = Math.min(results.size(), limit - totalFound);
+                    allResults.addAll(results.subList(0, toAdd));
+                    totalFound += toAdd;
+
+                    System.out.println("在表 " + tableName + " 中找到 " + results.size() + " 条记录");
+                }
+            } catch (Exception e) {
+                // 表可能不存在，继续
+                continue;
+            }
+        }
+
+        System.out.println("多表搜索完成，共找到 " + allResults.size() + " 条记录");
+        return allResults;
+    }
+
+    @Override
+    public List<main2022> advancedSearchAll(List<SearchFilter> filters) {
+        try {
+            // 检查是否是DOI或Title搜索且没有指定年份
+            if (shouldUseMultiTableSearch(filters)) {
+                System.out.println("检测到DOI/Title搜索且无年份指定，使用全量多表查询");
+                return advancedSearchAllTablesNoLimit(filters);
+            }
+
+            // 原有逻辑
+            List<SearchFilter> processedFilters = addDefaultYearIfNeeded(filters);
+            List<String> tableNames = tableSelectorService.determineTablesFromFilters(processedFilters);
+
+            if (tableNames.isEmpty()) {
+                tableNames = List.of("Wos_" + DEFAULT_YEAR);
+            }
+
+            return main2022Mapper.advancedSearchAllMultiTable(processedFilters, tableNames);
+        } catch (Exception e) {
+            System.err.println("多表全量搜索失败: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 在所有表中进行高级搜索（无数量限制）
+     */
+    private List<main2022> advancedSearchAllTablesNoLimit(List<SearchFilter> filters) {
+        List<main2022> allResults = new ArrayList<>();
+
+        System.out.println("开始全量多表顺序搜索（从2020往前）");
+
+        for (int year = MAX_YEAR; year >= MIN_YEAR; year--) {
+            String tableName = "Wos_" + year;
+
+            try {
+                List<main2022> results = main2022Mapper.advancedSearchAllMultiTable(
+                        filters,
+                        List.of(tableName)
+                );
+
+                if (!results.isEmpty()) {
+                    allResults.addAll(results);
+                    System.out.println("在表 " + tableName + " 中找到 " + results.size() + " 条记录");
+                }
+            } catch (Exception e) {
+                continue;
+            }
+        }
+
+        System.out.println("全量多表搜索完成，共找到 " + allResults.size() + " 条记录");
+        return allResults;
+    }
+
+    // ==================== 学科分析相关方法 ====================
 
     /**
      * 学科分析专用查询：根据关键词和年份范围查询数据并按年份分组
@@ -110,84 +410,57 @@ public class Main2022ServiceImpl implements Main2022Service {
         return filters;
     }
 
-    // ==================== 实现接口方法（增加默认年份处理） ====================
+    // ==================== 其他原有方法保持不变 ====================
 
     @Override
     public int countAdvancedSearch(List<SearchFilter> filters) {
         try {
-            // 添加默认年份过滤
+            // 检查是否需要多表计数
+            if (shouldUseMultiTableSearch(filters)) {
+                return countAllTables(filters);
+            }
+
+            // 原有逻辑
             List<SearchFilter> processedFilters = addDefaultYearIfNeeded(filters);
             List<String> tableNames = tableSelectorService.determineTablesFromFilters(processedFilters);
 
             if (tableNames.isEmpty()) {
-                System.out.println("没有找到匹配的表，使用默认年份" + DEFAULT_YEAR);
                 tableNames = List.of("Wos_" + DEFAULT_YEAR);
             }
 
-            System.out.println("计算数量 - 查询表: " + tableNames);
             return main2022Mapper.countAdvancedSearchMultiTable(processedFilters, tableNames);
         } catch (Exception e) {
-            System.err.println("多表计算数量失败: " + e.getMessage());
-            try {
-                List<SearchFilter> processedFilters = addDefaultYearIfNeeded(filters);
-                return main2022Mapper.countAdvancedSearch(processedFilters);
-            } catch (Exception fallbackError) {
-                System.err.println("单表计算数量也失败: " + fallbackError.getMessage());
-                return 50000;
-            }
+            System.err.println("计算数量失败: " + e.getMessage());
+            return 0;
         }
     }
 
-    @Override
-    public List<main2022> advancedSearch(List<SearchFilter> filters) {
-        try {
-            // 添加默认年份过滤
-            List<SearchFilter> processedFilters = addDefaultYearIfNeeded(filters);
-            List<String> tableNames = tableSelectorService.determineTablesFromFilters(processedFilters);
+    /**
+     * 在所有表中计数
+     */
+    private int countAllTables(List<SearchFilter> filters) {
+        int totalCount = 0;
 
-            if (tableNames.isEmpty()) {
-                System.out.println("没有找到匹配的表，使用默认年份" + DEFAULT_YEAR);
-                tableNames = List.of("Wos_" + DEFAULT_YEAR);
-            }
+        for (int year = MAX_YEAR; year >= MIN_YEAR; year--) {
+            String tableName = "Wos_" + year;
 
-            System.out.println("高级搜索 - 查询表: " + tableNames);
-            return main2022Mapper.advancedSearchMultiTable(processedFilters, tableNames);
-        } catch (Exception e) {
-            System.err.println("多表高级搜索失败: " + e.getMessage());
             try {
-                List<SearchFilter> processedFilters = addDefaultYearIfNeeded(filters);
-                return main2022Mapper.advancedSearch(processedFilters);
-            } catch (Exception fallbackError) {
-                System.err.println("单表高级搜索也失败: " + fallbackError.getMessage());
-                return new ArrayList<>();
+                int count = main2022Mapper.countAdvancedSearchMultiTable(
+                        filters,
+                        List.of(tableName)
+                );
+                totalCount += count;
+
+                if (count > 0) {
+                    System.out.println("表 " + tableName + " 中有 " + count + " 条记录");
+                }
+            } catch (Exception e) {
+                continue;
             }
         }
-    }
 
-    @Override
-    public List<main2022> advancedSearchAll(List<SearchFilter> filters) {
-        try {
-            // 添加默认年份过滤
-            List<SearchFilter> processedFilters = addDefaultYearIfNeeded(filters);
-            List<String> tableNames = tableSelectorService.determineTablesFromFilters(processedFilters);
-
-            if (tableNames.isEmpty()) {
-                System.out.println("没有找到匹配的表，使用默认年份" + DEFAULT_YEAR);
-                tableNames = List.of("Wos_" + DEFAULT_YEAR);
-            }
-
-            System.out.println("高级搜索全部 - 查询表: " + tableNames);
-            return main2022Mapper.advancedSearchAllMultiTable(processedFilters, tableNames);
-        } catch (Exception e) {
-            System.err.println("多表全量搜索失败: " + e.getMessage());
-            try {
-                List<SearchFilter> processedFilters = addDefaultYearIfNeeded(filters);
-                return main2022Mapper.advancedSearchAll(processedFilters);
-            } catch (Exception fallbackError) {
-                System.err.println("单表全量搜索也失败: " + fallbackError.getMessage());
-                return new ArrayList<>();
-            }
-        }
+        System.out.println("所有表中共有 " + totalCount + " 条记录");
+        return totalCount;
     }
 
     @Override
@@ -199,16 +472,18 @@ public class Main2022ServiceImpl implements Main2022Service {
 
             System.out.println("开始多表查询数据...");
 
-            // 添加默认年份过滤
+            // 检查是否需要多表搜索
+            if (shouldUseMultiTableSearch(filters)) {
+                return advancedSearchAllTablesWithProgress(filters, progressCallback);
+            }
+
+            // 原有逻辑
             List<SearchFilter> processedFilters = addDefaultYearIfNeeded(filters);
             List<String> tableNames = tableSelectorService.determineTablesFromFilters(processedFilters);
 
             if (tableNames.isEmpty()) {
-                System.out.println("没有找到匹配的表，使用默认年份" + DEFAULT_YEAR);
                 tableNames = List.of("Wos_" + DEFAULT_YEAR);
             }
-
-            System.out.println("多表查询带进度 - 查询表: " + tableNames);
 
             if (progressCallback != null) {
                 progressCallback.accept(0, 1);
@@ -220,8 +495,6 @@ public class Main2022ServiceImpl implements Main2022Service {
                 allData = new ArrayList<>();
             }
 
-            System.out.println("多表查询完成，获得 " + allData.size() + " 条记录");
-
             if (progressCallback != null) {
                 progressCallback.accept(allData.size(), allData.size());
             }
@@ -230,40 +503,54 @@ public class Main2022ServiceImpl implements Main2022Service {
 
         } catch (Exception e) {
             System.err.println("多表查询失败: " + e.getMessage());
-            e.printStackTrace();
-
-            try {
-                System.out.println("回退到单表查询...");
-
-                if (progressCallback != null) {
-                    progressCallback.accept(0, 1);
-                }
-
-                List<SearchFilter> processedFilters = addDefaultYearIfNeeded(filters);
-                List<main2022> fallbackData = main2022Mapper.advancedSearchAll(processedFilters);
-
-                if (fallbackData == null) {
-                    fallbackData = new ArrayList<>();
-                }
-
-                if (progressCallback != null) {
-                    progressCallback.accept(fallbackData.size(), fallbackData.size());
-                }
-
-                return fallbackData;
-
-            } catch (Exception fallbackError) {
-                System.err.println("单表查询也失败: " + fallbackError.getMessage());
-                if (progressCallback != null) {
-                    progressCallback.accept(0, 0);
-                }
-                return new ArrayList<>();
+            if (progressCallback != null) {
+                progressCallback.accept(0, 0);
             }
+            return new ArrayList<>();
         }
     }
 
     /**
-     * 新增：如果搜索条件中没有年份过滤，则添加默认年份
+     * 在所有表中搜索（带进度回调）
+     */
+    private List<main2022> advancedSearchAllTablesWithProgress(List<SearchFilter> filters,
+                                                               BiConsumer<Integer, Integer> progressCallback) {
+        List<main2022> allResults = new ArrayList<>();
+        int tablesProcessed = 0;
+        int totalTables = MAX_YEAR - MIN_YEAR + 1;
+
+        for (int year = MAX_YEAR; year >= MIN_YEAR; year--) {
+            String tableName = "Wos_" + year;
+            tablesProcessed++;
+
+            if (progressCallback != null) {
+                progressCallback.accept(tablesProcessed, totalTables);
+            }
+
+            try {
+                List<main2022> results = main2022Mapper.advancedSearchAllMultiTable(
+                        filters,
+                        List.of(tableName)
+                );
+
+                if (!results.isEmpty()) {
+                    allResults.addAll(results);
+                    System.out.println("在表 " + tableName + " 中找到 " + results.size() + " 条记录");
+                }
+            } catch (Exception e) {
+                continue;
+            }
+        }
+
+        if (progressCallback != null) {
+            progressCallback.accept(totalTables, totalTables);
+        }
+
+        return allResults;
+    }
+
+    /**
+     * 添加默认年份（如果没有指定）
      */
     private List<SearchFilter> addDefaultYearIfNeeded(List<SearchFilter> filters) {
         if (filters == null || filters.isEmpty()) {
@@ -277,24 +564,31 @@ public class Main2022ServiceImpl implements Main2022Service {
                         Integer.valueOf(5).equals(filter.getSelects().get(1))); // 5 = Year Published
 
         if (!hasYearFilter) {
-            System.out.println("未指定年份条件，添加默认年份: " + DEFAULT_YEAR);
+            // 检查是否是DOI或Title搜索
+            boolean needsYearFilter = !filters.stream()
+                    .anyMatch(filter -> filter.getSelects() != null &&
+                            filter.getSelects().size() > 1 &&
+                            (Integer.valueOf(2).equals(filter.getSelects().get(1)) || // Title
+                                    Integer.valueOf(6).equals(filter.getSelects().get(1)))); // DOI
 
-            // 创建新的过滤器列表，包含默认年份
-            List<SearchFilter> newFilters = new ArrayList<>(filters);
+            if (needsYearFilter) {
+                System.out.println("未指定年份条件，添加默认年份: " + DEFAULT_YEAR);
 
-            SearchFilter yearFilter = new SearchFilter();
-            yearFilter.setId(newFilters.size() + 1);
-            yearFilter.setSelects(List.of("AND", 5)); // Year Published
-            yearFilter.setInput(String.valueOf(DEFAULT_YEAR));
+                // 创建新的过滤器列表，包含默认年份
+                List<SearchFilter> newFilters = new ArrayList<>(filters);
 
-            newFilters.add(yearFilter);
-            return newFilters;
+                SearchFilter yearFilter = new SearchFilter();
+                yearFilter.setId(newFilters.size() + 1);
+                yearFilter.setSelects(List.of("AND", 5)); // Year Published
+                yearFilter.setInput(String.valueOf(DEFAULT_YEAR));
+
+                newFilters.add(yearFilter);
+                return newFilters;
+            }
         }
 
         return filters;
     }
-
-    // ==================== 扩展方法（原有方法保持） ====================
 
     /**
      * 根据年份范围查询

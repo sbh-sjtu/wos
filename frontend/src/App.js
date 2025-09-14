@@ -11,6 +11,9 @@ function App() {
                 <Route path="/" element={<AdvancedSearch />}></Route>
                 <Route path="/disciplinaryAnalysis" element={<DisciplinaryAnalysis />}></Route>
                 <Route path="/searchResult" element={<SearchResult />}></Route>
+                {/* 新增：支持WOS_UID参数的详情页路由 */}
+                <Route path="/detail/:wosUid" element={<PaperDetail />}></Route>
+                {/* 保留兼容旧路由 */}
                 <Route path="/detail" element={<PaperDetail />}></Route>
             </Routes>
         </>

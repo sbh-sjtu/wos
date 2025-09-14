@@ -82,9 +82,8 @@ public class SqlProvider {
             condition.append("journal_title_source LIKE '%").append(keyword).append("%'");
         } else if ("5".equals(filter.getSelects().get(1).toString())) {
             condition.append("pubyear LIKE '%").append(keyword).append("%'");
-        } else if ("6".equals(filter.getSelects().get(1).toString())) {
-            condition.append("identifier_doi LIKE '%").append(keyword).append("%'");
         }
+        // 移除了DOI查询逻辑
 
         System.out.println("学科分析条件:" + condition.toString());
         return condition.toString();
@@ -307,9 +306,8 @@ public class SqlProvider {
             condition.append("journal_title_source LIKE '%").append(keyword).append("%'");
         } else if ("5".equals(filter.getSelects().get(1).toString())) {
             condition.append("pubyear LIKE '%").append(keyword).append("%'");
-        } else if ("6".equals(filter.getSelects().get(1).toString())) {
-            condition.append("identifier_doi LIKE '%").append(keyword).append("%'");
         }
+        // 移除了DOI查询逻辑
 
         System.out.println("condition:" + condition.toString());
         return condition.toString();

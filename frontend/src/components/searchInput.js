@@ -130,7 +130,7 @@ const SearchInput = () => {
 
         {/* 搜索面板 */}
         <div className="search-panel">
-          {/* 主搜索框 */}
+          {/* 主搜索框 - 移除DOI选项 */}
           <div className="main-search-row">
             <Select
                 className="field-select"
@@ -144,7 +144,7 @@ const SearchInput = () => {
               <Option value={3}>Author</Option>
               <Option value={4}>Publication/Source Titles</Option>
               <Option value={5}>Year Published</Option>
-              <Option value={6}>DOI</Option>
+              {/* 移除了DOI选项 */}
             </Select>
 
             <Input
@@ -237,7 +237,7 @@ const SearchInput = () => {
               </div>
           )}
 
-          {/* 搜索提示 */}
+          {/* 搜索提示 - 更新提示文本 */}
           <div className="search-tips">
             <Text type="secondary">
               搜索提示：Topic包含标题和关键词 | 支持AND/OR逻辑组合 | 年份仅支持单年份查询 | 未指定年份时默认搜索2020年数据

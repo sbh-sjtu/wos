@@ -20,13 +20,6 @@ public interface Main2022Mapper {
                                  @Param("wosUid") String wosUid);
 
     /**
-     * 根据DOI查询单条记录
-     */
-    @Select("SELECT TOP 1 * FROM [${tableName}] WHERE identifier_doi = #{doi}")
-    main2022 findByDoiInTable(@Param("tableName") String tableName,
-                              @Param("doi") String doi);
-
-    /**
      * 根据标题精确查询
      */
     @Select("SELECT TOP 1 * FROM [${tableName}] WHERE article_title = #{title}")

@@ -19,7 +19,8 @@ import java.util.Map;
 
 /**
  * Controller for main2022（支持动态多表查询）
- * 增强版：支持WOS_UID、DOI、Title的单条查询
+ * 增强版：支持WOS_UID、Title的单条查询
+ * 已移除DOI查询功能
  */
 @RestController
 @RequestMapping("/main2022")
@@ -77,48 +78,6 @@ public class Main2022Controller {
         } catch (Exception e) {
             System.err.println("查询文献详情失败: " + e.getMessage());
             e.printStackTrace();
-
-            response.put("success", false);
-            response.put("error", "查询失败: " + e.getMessage());
-            response.put("data", null);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
-
-    /**
-     * 根据DOI获取文献详情
-     * URL格式: /main2022/detail/doi?value={doi}
-     */
-    @GetMapping("/detail/doi")
-    public ResponseEntity<Map<String, Object>> getPaperDetailByDoi(@RequestParam String value) {
-        Map<String, Object> response = new HashMap<>();
-
-        try {
-            System.out.println("查询DOI: " + value);
-
-            long startTime = System.currentTimeMillis();
-
-            Main2022ServiceImpl serviceImpl = (Main2022ServiceImpl) main2022Service;
-            main2022 paper = serviceImpl.findByDoi(value);
-
-            long queryTime = System.currentTimeMillis() - startTime;
-
-            if (paper != null) {
-                response.put("success", true);
-                response.put("data", paper);
-                response.put("queryTime", queryTime + "ms");
-                response.put("message", "通过DOI查询成功");
-                return ResponseEntity.ok(response);
-            } else {
-                response.put("success", false);
-                response.put("message", "未找到DOI为 " + value + " 的文献");
-                response.put("data", null);
-                response.put("queryTime", queryTime + "ms");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-            }
-
-        } catch (Exception e) {
-            System.err.println("通过DOI查询失败: " + e.getMessage());
 
             response.put("success", false);
             response.put("error", "查询失败: " + e.getMessage());
@@ -222,7 +181,7 @@ public class Main2022Controller {
 
     /**
      * 高级搜索接口（限制500条）
-     * 现在支持DOI和Title的多表查询
+     * 现在支持Title的多表查询（已移除DOI查询功能）
      */
     @PostMapping(value = "/advancedSearch")
     public List<main2022> selectAll(@RequestBody List<SearchFilter> selectInfo) {

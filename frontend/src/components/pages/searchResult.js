@@ -504,7 +504,7 @@ function SearchResult() {
                                                     <Option value={3}>Author</Option>
                                                     <Option value={4}>Publication/Source Titles</Option>
                                                     <Option value={5}>Year Published</Option>
-                                                    <Option value={6}>DOI</Option>
+                                                    {/* 移除了DOI选项 */}
                                                 </Select>
                                                 <Input
                                                     placeholder="输入关键词..."
@@ -538,7 +538,6 @@ function SearchResult() {
                                                             <Option value={3}>Author</Option>
                                                             <Option value={4}>Publication/Source Titles</Option>
                                                             <Option value={5}>Year Published</Option>
-                                                            <Option value={6}>DOI</Option>
                                                         </Select>
                                                         <Tooltip title="删除条件">
                                                             <Button

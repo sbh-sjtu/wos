@@ -71,42 +71,6 @@ public class Main2022ServiceImpl implements Main2022Service {
     }
 
     /**
-     * 根据DOI查询文献（从2020往前查询）
-     */
-    public main2022 findByDoi(String doi) {
-        if (doi == null || doi.trim().isEmpty()) {
-            return null;
-        }
-
-        System.out.println("开始查询DOI: " + doi);
-        long startTime = System.currentTimeMillis();
-        int tablesSearched = 0;
-
-        for (int year = MAX_YEAR; year >= MIN_YEAR; year--) {
-            tablesSearched++;
-            String tableName = "Wos_" + year;
-
-            try {
-                main2022 result = main2022Mapper.findByDoiInTable(tableName, doi);
-
-                if (result != null) {
-                    long totalTime = System.currentTimeMillis() - startTime;
-                    System.out.println(String.format(
-                            "通过DOI找到文献 - 表: %s, 搜索了%d个表, 总耗时: %dms",
-                            tableName, tablesSearched, totalTime
-                    ));
-                    return result;
-                }
-            } catch (Exception e) {
-                continue;
-            }
-        }
-
-        System.out.println("未通过DOI找到文献，搜索了" + tablesSearched + "个表");
-        return null;
-    }
-
-    /**
      * 根据标题查询文献（从2020往前查询）
      */
     public main2022 findByTitle(String title, boolean exactMatch) {
@@ -225,15 +189,14 @@ public class Main2022ServiceImpl implements Main2022Service {
                         filter.getSelects().size() > 1 &&
                         Integer.valueOf(5).equals(filter.getSelects().get(1))); // 5 = Year Published
 
-        // 检查是否是DOI或Title搜索
-        boolean hasDoiOrTitleSearch = filters.stream()
+        // 检查是否是Title搜索（移除DOI检查）
+        boolean hasTitleSearch = filters.stream()
                 .anyMatch(filter -> filter.getSelects() != null &&
                         filter.getSelects().size() > 1 &&
-                        (Integer.valueOf(2).equals(filter.getSelects().get(1)) || // 2 = Title
-                                Integer.valueOf(6).equals(filter.getSelects().get(1)))); // 6 = DOI
+                        Integer.valueOf(2).equals(filter.getSelects().get(1))); // 2 = Title
 
-        // 如果是DOI或Title搜索且没有年份过滤，则使用多表搜索
-        return hasDoiOrTitleSearch && !hasYearFilter;
+        // 如果是Title搜索且没有年份过滤，则使用多表搜索
+        return hasTitleSearch && !hasYearFilter;
     }
 
     /**
@@ -564,12 +527,11 @@ public class Main2022ServiceImpl implements Main2022Service {
                         Integer.valueOf(5).equals(filter.getSelects().get(1))); // 5 = Year Published
 
         if (!hasYearFilter) {
-            // 检查是否是DOI或Title搜索
+            // 检查是否是Title搜索（移除DOI检查）
             boolean needsYearFilter = !filters.stream()
                     .anyMatch(filter -> filter.getSelects() != null &&
                             filter.getSelects().size() > 1 &&
-                            (Integer.valueOf(2).equals(filter.getSelects().get(1)) || // Title
-                                    Integer.valueOf(6).equals(filter.getSelects().get(1)))); // DOI
+                            Integer.valueOf(2).equals(filter.getSelects().get(1))); // Title
 
             if (needsYearFilter) {
                 System.out.println("未指定年份条件，添加默认年份: " + DEFAULT_YEAR);

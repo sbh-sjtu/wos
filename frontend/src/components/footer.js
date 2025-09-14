@@ -11,7 +11,7 @@ const Footer = () => {
     views: '3,456,789',
     downloads: '567,890',
     users: '12,345',
-    lastUpdate: '2025-04-01'
+    lastUpdate: '2025-09-01'
   };
 
   const iconStyle = {

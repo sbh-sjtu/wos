@@ -10,26 +10,26 @@ function ConditionRow({ filter, handleSelectChange, handleInputChange, handleDel
         <div key={filter.id} className='condition'>
             {/* 删除键 */}
             <Tooltip title={'删除条件 '+filter.id}>
-                <div 
-                    className='delete-icon' 
+                <div
+                    className='delete-icon'
                     onClick={() => handleDeleteFilter(filter.id)}
                 >
                     <DeleteOutlined style={{ color: '#b82e28' }} />
                 </div>
             </Tooltip>
-            
+
             {/* 选择条件之间关系AND&OR */}
-            <Select 
-                style={{width: '10%', marginRight: '1%'}} 
-                value={filter.selects[0]} 
+            <Select
+                style={{width: '10%', marginRight: '1%'}}
+                value={filter.selects[0]}
                 onChange={(value) => handleSelectChange(filter.id, 0, value)}
             >
                 <Option value={"AND"}>AND</Option>
                 <Option value={"OR"}>OR</Option>
             </Select>
-            
-            {/* 选择条件 */}
-            <Select 
+
+            {/* 选择条件 - 移除DOI选项 */}
+            <Select
                 style={{width: '23.5%', marginRight: '1%'}}
                 value={filter.selects[1]}
                 onChange={(value) => handleSelectChange(filter.id, 1, value)}
@@ -39,10 +39,10 @@ function ConditionRow({ filter, handleSelectChange, handleInputChange, handleDel
                 <Option value={3}>Author</Option>
                 <Option value={4}>Publication/Source Titles</Option>
                 <Option value={5}>Year Published</Option>
-                <Option value={6}>DOI</Option>
+                {/* 移除了DOI选项 */}
             </Select>
-            
-            <Input 
+
+            <Input
                 style={{width: '65%'}}
                 value={filter.input}
                 placeholder="输入关键词..."

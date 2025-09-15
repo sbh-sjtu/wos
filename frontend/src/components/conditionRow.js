@@ -28,7 +28,7 @@ function ConditionRow({ filter, handleSelectChange, handleInputChange, handleDel
                 <Option value={"OR"}>OR</Option>
             </Select>
 
-            {/* 选择条件 - 移除DOI选项 */}
+            {/* 选择条件 - 移除年份选项，因为年份现在是独立的必选项 */}
             <Select
                 style={{width: '23.5%', marginRight: '1%'}}
                 value={filter.selects[1]}
@@ -38,8 +38,7 @@ function ConditionRow({ filter, handleSelectChange, handleInputChange, handleDel
                 <Option value={2}>Title</Option>
                 <Option value={3}>Author</Option>
                 <Option value={4}>Publication/Source Titles</Option>
-                <Option value={5}>Year Published</Option>
-                {/* 移除了DOI选项 */}
+                {/* 移除了Year Published选项，因为年份现在是独立的必选下拉框 */}
             </Select>
 
             <Input

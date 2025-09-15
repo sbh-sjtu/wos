@@ -1,8 +1,8 @@
-/* searchInput.css - 优化版本 */
+/* searchInput.css - 支持年份选择器的版本 */
 
 .search-input-container {
   width: 100%;
-  max-width: 900px;
+  max-width: 1500px;
   margin: 0 auto;
   background: white;
   border-radius: 16px;
@@ -39,12 +39,17 @@
   background-color: white;
 }
 
+/* 主搜索区域 */
+.main-search-section {
+  margin-bottom: 20px;
+}
+
 /* 主搜索行 */
 .main-search-row {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 20px;
+  width: 100%;
 }
 
 .field-select {
@@ -65,6 +70,51 @@
   font-size: 16px;
 }
 
+/* 年份和搜索按钮组 */
+.year-search-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+}
+
+/* 年份选择器样式 */
+.year-select {
+  flex: 1;
+  min-width: 120px;
+}
+
+.year-select .ant-select-selector {
+  border-radius: 10px !important;
+  border: 2px solid #e8e8e8 !important;
+  font-weight: 500;
+  background-color: #fef8f7 !important; /* 淡红色背景，突出必选项 */
+}
+
+.year-select:hover .ant-select-selector {
+  border-color: #b82e28 !important;
+}
+
+.year-select.ant-select-focused .ant-select-selector {
+  border-color: #b82e28 !important;
+  box-shadow: 0 0 0 3px rgba(184, 46, 40, 0.15) !important;
+}
+
+/* 年份选择器下拉菜单样式 */
+.year-select .ant-select-item {
+  font-weight: 500;
+}
+
+.year-select .ant-select-item-option-selected {
+  background-color: #fff1f0 !important;
+  font-weight: 600;
+}
+
+.year-select .ant-select-item-option:hover {
+  background-color: #fff7f6 !important;
+}
+
+/* 搜索按钮 */
 .search-button {
   width: 120px;
   height: 48px;
@@ -158,6 +208,11 @@
   line-height: 1.6;
 }
 
+.search-tips strong {
+  color: #b82e28;
+  font-weight: 600;
+}
+
 /* 表单元素交互效果 */
 .search-panel .ant-select:hover .ant-select-selector,
 .search-panel .ant-input:hover {
@@ -221,6 +276,21 @@
 }
 
 /* 响应式设计 */
+@media (max-width: 1024px) {
+  .search-fields-group {
+    flex-wrap: wrap;
+  }
+
+  .field-select {
+    width: 180px;
+  }
+
+  .search-input {
+    flex: 1;
+    min-width: 150px;
+  }
+}
+
 @media (max-width: 768px) {
   .search-input-container {
     margin: 0 15px;
@@ -239,19 +309,20 @@
     padding: 24px 20px 32px;
   }
 
-  .main-search-row {
+  .search-fields-group {
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
   }
 
   .field-select,
   .search-input,
+  .year-select,
   .search-button {
-    width: 100%;
+    width: 100% !important;
   }
 
   .search-button {
-    height: 44px;
+    height: 44px !important;
   }
 
   .action-buttons-row {
@@ -285,6 +356,20 @@
 
   .search-panel {
     padding: 20px 16px 24px;
+  }
+
+  .year-search-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .year-select,
+  .search-button {
+    width: 100%;
+  }
+
+  .search-button {
+    height: 44px;
   }
 
   .advanced-section {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Layout, Pagination, Button, Typography, Badge, Empty, Spin, Select, Input, Space, Divider, message, Tooltip, Modal, Alert, Progress } from "antd";
-import { DownloadOutlined, SearchOutlined, PlusOutlined, DeleteOutlined, ClearOutlined, FileTextOutlined, DatabaseOutlined, CloseOutlined } from '@ant-design/icons';
+import { DownloadOutlined, SearchOutlined, PlusOutlined, DeleteOutlined, ClearOutlined, FileTextOutlined, DatabaseOutlined, CalendarOutlined } from '@ant-design/icons';
 import Header from '../header';
 import Footer from '../footer';
 import PaperCard from '../paperCard';
@@ -21,11 +21,34 @@ function SearchResult() {
     const initialPaperInfo = state?.paperInfo || [];
     const initialSearchFilter = state?.searchFilter || [{ id: 1, selects: ['AND', 1], input: '' }];
 
+    // 提取年份（如果存在）
+    const extractYearFromFilters = (filters) => {
+        const yearFilter = filters.find(f => f.selects && f.selects[1] === 5);
+        return yearFilter ? yearFilter.input : '2020';
+    };
+
+    // 移除年份过滤器
+    const removeYearFilter = (filters) => {
+        return filters.filter(f => !(f.selects && f.selects[1] === 5));
+    };
+
     const [paperInfo, setPaperInfo] = useState(initialPaperInfo);
-    const [searchFilter, setSearchFilter] = useState(initialSearchFilter);
+    const [searchFilter, setSearchFilter] = useState(removeYearFilter(initialSearchFilter));
+    const [selectedYear, setSelectedYear] = useState(extractYearFromFilters(initialSearchFilter));
     const [loading, setLoading] = useState(false);
     const [downloadLoading, setDownloadLoading] = useState(false);
     const [downloadModalVisible, setDownloadModalVisible] = useState(false);
+
+    // 生成年份选项（1950-2020）
+    const generateYearOptions = () => {
+        const years = [];
+        for (let year = 2020; year >= 1950; year--) {
+            years.push(year.toString());
+        }
+        return years;
+    };
+
+    const yearOptions = generateYearOptions();
 
     // 下载进度相关状态
     const [downloadProgress, setDownloadProgress] = useState({
@@ -60,14 +83,16 @@ function SearchResult() {
         if (paperInfo.length > 0) {
             sessionStorage.setItem('searchResults', JSON.stringify(paperInfo));
             sessionStorage.setItem('searchFilters', JSON.stringify(searchFilter));
+            sessionStorage.setItem('selectedYear', selectedYear);
         }
-    }, [paperInfo, searchFilter]);
+    }, [paperInfo, searchFilter, selectedYear]);
 
     // 如果没有数据但有 sessionStorage 数据，则恢复数据
     useEffect(() => {
         if (paperInfo.length === 0) {
             const savedResults = sessionStorage.getItem('searchResults');
             const savedFilters = sessionStorage.getItem('searchFilters');
+            const savedYear = sessionStorage.getItem('selectedYear');
 
             if (savedResults && savedFilters) {
                 try {
@@ -77,6 +102,7 @@ function SearchResult() {
                     if (parsedResults.length > 0) {
                         setPaperInfo(parsedResults);
                         setSearchFilter(parsedFilters);
+                        setSelectedYear(savedYear || '2020');
                     }
                 } catch (error) {
                     console.error('恢复搜索数据失败:', error);
@@ -186,6 +212,7 @@ function SearchResult() {
     // 清空所有条件
     const handleClearAll = () => {
         setSearchFilter([{ id: 1, selects: ['AND', 1], input: '' }]);
+        setSelectedYear('2020'); // 重置年份为默认值
     };
 
     // 更新选择值
@@ -207,7 +234,7 @@ function SearchResult() {
         ));
     };
 
-    // 执行搜索
+    // 执行搜索 - 包含年份
     const handleSearch = async () => {
         const emptyFields = searchFilter.filter(filter => !filter.input.trim());
         if (emptyFields.length > 0) {
@@ -218,9 +245,19 @@ function SearchResult() {
         setLoading(true);
 
         try {
+            // 构建包含年份的搜索过滤器
+            const searchWithYear = [...searchFilter];
+
+            // 添加年份条件
+            searchWithYear.push({
+                id: searchWithYear.length + 1,
+                selects: ['AND', 5], // 5 = Year Published
+                input: selectedYear
+            });
+
             const response = await axios.post(
                 "http://localhost:8888/main2022/advancedSearch",
-                searchFilter
+                searchWithYear
             );
 
             const newPaperInfo = response.data;
@@ -229,9 +266,11 @@ function SearchResult() {
             setSearchParams({ page: '1' });
 
             if (newPaperInfo.length >= 200) {
-                message.success(`搜索完成，当前显示前 200 条结果`);
+                message.success(`在${selectedYear}年找到${newPaperInfo.length}条结果（显示前200条）`);
+            } else if (newPaperInfo.length > 0) {
+                message.success(`在${selectedYear}年找到 ${newPaperInfo.length} 篇文献`);
             } else {
-                message.success(`找到 ${newPaperInfo.length} 篇文献`);
+                message.info(`在${selectedYear}年未找到相关文献`);
             }
         } catch (error) {
             console.error("搜索请求失败:", error);
@@ -325,8 +364,16 @@ function SearchResult() {
         }
 
         try {
+            // 构建包含年份的搜索过滤器
+            const searchWithYear = [...searchFilter];
+            searchWithYear.push({
+                id: searchWithYear.length + 1,
+                selects: ['AND', 5],
+                input: selectedYear
+            });
+
             // 启动下载任务
-            const response = await axios.post('http://localhost:8888/download/csv/all/start', searchFilter);
+            const response = await axios.post('http://localhost:8888/download/csv/all/start', searchWithYear);
             const data = response.data;
 
             if (data.error) {
@@ -453,7 +500,9 @@ function SearchResult() {
                                         }}
                                         overflowCount={9999}
                                     >
-                                        <Text style={{ fontSize: '16px', marginRight: '10px' }}>当前显示文献</Text>
+                                        <Text style={{ fontSize: '16px', marginRight: '10px' }}>
+                                            {selectedYear}年文献
+                                        </Text>
                                     </Badge>
 
                                     <div className="action-buttons">
@@ -483,7 +532,7 @@ function SearchResult() {
 
                                 <Divider style={{ margin: '16px 0' }} />
 
-                                {/* 精简版高级搜索 */}
+                                {/* 精简版高级搜索 - 添加年份选择器 */}
                                 <div className="advanced-search-panel">
                                     <Title level={5} style={{ marginBottom: 16, color: '#b82e28' }}>
                                         修改搜索条件
@@ -491,6 +540,32 @@ function SearchResult() {
 
                                     <Spin spinning={loading}>
                                         <div className="compact-search-form">
+                                            {/* 年份选择器 - 放在最上面作为必选项 */}
+                                            <div className="compact-year-select">
+                                                <Text strong style={{ display: 'block', marginBottom: 8, color: '#b82e28' }}>
+                                                    年份（必选）
+                                                </Text>
+                                                <Select
+                                                    style={{ width: '100%' }}
+                                                    value={selectedYear}
+                                                    onChange={setSelectedYear}
+                                                    size="small"
+                                                    placeholder="选择年份"
+                                                    suffixIcon={<CalendarOutlined style={{ color: '#b82e28' }} />}
+                                                    showSearch
+                                                    optionFilterProp="children"
+                                                    className="year-select-compact"
+                                                >
+                                                    {yearOptions.map(year => (
+                                                        <Option key={year} value={year}>
+                                                            {year}年
+                                                        </Option>
+                                                    ))}
+                                                </Select>
+                                            </div>
+
+                                            <Divider style={{ margin: '12px 0' }} />
+
                                             {/* 第一个条件（不显示AND/OR选择器） */}
                                             <div className="compact-condition">
                                                 <Select
@@ -503,8 +578,6 @@ function SearchResult() {
                                                     <Option value={2}>Title</Option>
                                                     <Option value={3}>Author</Option>
                                                     <Option value={4}>Publication/Source Titles</Option>
-                                                    <Option value={5}>Year Published</Option>
-                                                    {/* 移除了DOI选项 */}
                                                 </Select>
                                                 <Input
                                                     placeholder="输入关键词..."
@@ -537,7 +610,6 @@ function SearchResult() {
                                                             <Option value={2}>Title</Option>
                                                             <Option value={3}>Author</Option>
                                                             <Option value={4}>Publication/Source Titles</Option>
-                                                            <Option value={5}>Year Published</Option>
                                                         </Select>
                                                         <Tooltip title="删除条件">
                                                             <Button
@@ -633,7 +705,7 @@ function SearchResult() {
                                 ) : (
                                     <div className="no-results">
                                         <Empty
-                                            description="没有找到匹配的文献"
+                                            description={`在${selectedYear}年没有找到匹配的文献`}
                                             image={Empty.PRESENTED_IMAGE_SIMPLE}
                                         />
                                     </div>
@@ -715,7 +787,7 @@ function SearchResult() {
                                 下载所有符合条件的数据
                             </div>
                             <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                                下载所有匹配搜索条件的记录（最多 50,000 条）
+                                下载{selectedYear}年所有匹配的记录（最多 50,000 条）
                             </div>
                         </div>
                     </Button>
